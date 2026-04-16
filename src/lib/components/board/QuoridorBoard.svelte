@@ -1,13 +1,13 @@
 <script lang="ts">
-  import type { GameState, Player, WallOrientation } from "$lib/types/game";
-  import { formatSquare } from "$lib/utils/notation";
-  import { fade } from "svelte/transition";
+  import type { GameState, Player, WallOrientation } from '$lib/types/game';
+  import { formatSquare } from '$lib/utils/notation';
+  import { fade } from 'svelte/transition';
 
   export let gameState: GameState | null = null;
   export let disabled = false;
   export let onMove: (notation: string) => void;
 
-  const COLS = ["a", "b", "c", "d", "e", "f", "g", "h", "i"];
+  const COLS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
   const DISPLAY_ROWS = [9, 8, 7, 6, 5, 4, 3, 2, 1];
   const WALL_ROWS = [8, 7, 6, 5, 4, 3, 2, 1];
   const WALL_COLS = COLS.slice(0, 8);
@@ -22,25 +22,22 @@
   let hoveredWall: string | null = null;
 
   $: renderKey = gameState
-    ? `${gameState.definedPosition ?? ""}-${gameState.moveHistory.length}-${gameState.currentPlayer}-${disabled ? "disabled" : "active"}`
-    : "empty";
+    ? `${gameState.definedPosition ?? ''}-${gameState.moveHistory.length}-${gameState.currentPlayer}-${disabled ? 'disabled' : 'active'}`
+    : 'empty';
 
   $: activePlayer =
-    gameState?.players.find(
-      (player) => player.id === gameState.currentPlayer,
-    ) ?? null;
+    gameState?.players.find((player) => player.id === gameState.currentPlayer) ?? null;
+
   $: canPlaceWalls = !disabled && (activePlayer?.wallsRemaining ?? 0) > 0;
+
   $: playerMap = new Map<string, Player>(
-    (gameState?.players ?? []).map((player) => [
-      formatSquare(player.position),
-      player,
-    ]),
+    (gameState?.players ?? []).map((player) => [formatSquare(player.position), player])
   );
+
   $: legalMoveSet = new Set(gameState?.legalMoves ?? []);
+
   $: wallSet = new Set(
-    (gameState?.walls ?? []).map(
-      (wall) => `${formatSquare(wall.position)}${wall.orientation}`,
-    ),
+    (gameState?.walls ?? []).map((wall) => `${formatSquare(wall.position)}${wall.orientation}`)
   );
 
   function handleSquareClick(col: string, row: number) {
@@ -48,47 +45,13 @@
     onMove(`${col}${row}`);
   }
 
-  function wallNotation(
-    col: string,
-    row: number,
-    orientation: WallOrientation,
-  ) {
+  function wallNotation(col: string, row: number, orientation: WallOrientation) {
     return `${col}${row}${orientation}`;
   }
 
-  function handleWallSlotClick(
-    col: string,
-    row: number,
-    orientation: WallOrientation,
-  ) {
+  function handleWallSlotClick(col: string, row: number, orientation: WallOrientation) {
     if (!canPlaceWalls) return;
     onMove(wallNotation(col, row, orientation));
-  }
-
-  function handleWallDragOver(
-    event: DragEvent,
-    col: string,
-    row: number,
-    orientation: WallOrientation,
-  ) {
-    // Removed
-  }
-
-  function handleWallDragLeave(
-    col: string,
-    row: number,
-    orientation: WallOrientation,
-  ) {
-    // Removed
-  }
-
-  function handleWallDrop(
-    event: DragEvent,
-    col: string,
-    row: number,
-    orientation: WallOrientation,
-  ) {
-    // Removed
   }
 
   function getPlayerAtPosition(col: string, row: number): Player | undefined {
@@ -99,11 +62,7 @@
     return legalMoveSet.has(`${col}${row}`);
   }
 
-  function hasWall(
-    col: string,
-    row: number,
-    orientation: WallOrientation,
-  ): boolean {
+  function hasWall(col: string, row: number, orientation: WallOrientation): boolean {
     return wallSet.has(`${col}${row}${orientation}`);
   }
 
@@ -189,8 +148,9 @@
                 {@const squareKey = `${col}${row}`}
                 {@const player = getPlayerAtPosition(col, row)}
                 {@const legal = isLegalMove(col, row)}
+
                 <button
-                  class={`absolute flex items-center justify-center rounded-lg border-2 transition-all ${player ? "border-zinc-600" : "border-zinc-800"} ${legal && !disabled ? "cursor-pointer hover:border-blue-400 hover:bg-blue-500/10" : ""} ${hoveredSquare === squareKey && legal ? "border-blue-300 bg-blue-500/10" : ""} ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+                  class={`absolute flex items-center justify-center rounded-lg border-2 transition-all ${player ? 'border-zinc-600' : 'border-zinc-800'} ${legal && !disabled ? 'cursor-pointer hover:border-blue-400 hover:bg-blue-500/10' : ''} ${hoveredSquare === squareKey && legal ? 'border-blue-300 bg-blue-500/10' : ''} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
                   style={`left:${squareLeft(colIndex)}px;top:${squareTop(rowIndex)}px;width:${SQUARE}px;height:${SQUARE}px;`}
                   disabled={disabled || !legal}
                   title={`Move to ${squareKey}`}
@@ -199,11 +159,12 @@
                   on:click={() => handleSquareClick(col, row)}
                 >
                   <div
-                    class={`absolute inset-0 rounded-md ${legal && !disabled ? "bg-blue-500/6" : "bg-transparent"}`}
+                    class={`absolute inset-0 rounded-md ${legal && !disabled ? 'bg-blue-500/6' : 'bg-transparent'}`}
                   ></div>
+
                   {#if player}
                     <div
-                      class={`relative z-10 h-8 w-8 rounded-full border-2 shadow-lg ${player.color === "blue" ? "border-blue-300 bg-blue-500" : ""} ${player.color === "red" ? "border-red-300 bg-red-500" : ""} ${player.color === "green" ? "border-green-300 bg-green-500" : ""} ${player.color === "yellow" ? "border-yellow-300 bg-yellow-500" : ""}`}
+                      class={`relative z-10 h-8 w-8 rounded-full border-2 shadow-lg ${player.color === 'blue' ? 'border-blue-300 bg-blue-500' : ''} ${player.color === 'red' ? 'border-red-300 bg-red-500' : ''} ${player.color === 'green' ? 'border-green-300 bg-green-500' : ''} ${player.color === 'yellow' ? 'border-yellow-300 bg-yellow-500' : ''}`}
                     ></div>
                   {/if}
                 </button>
@@ -212,34 +173,35 @@
 
             {#each WALL_ROWS as row}
               {@const rowIndex = wallAnchorRowIndex(row)}
+
               {#each WALL_COLS as col, colIndex}
-                {@const horizontalKey = wallNotation(col, row, "h")}
-                {@const verticalKey = wallNotation(col, row, "v")}
-                {@const hasHorizontalWall = hasWall(col, row, "h")}
-                {@const hasVerticalWall = hasWall(col, row, "v")}
+                {@const horizontalKey = wallNotation(col, row, 'h')}
+                {@const verticalKey = wallNotation(col, row, 'v')}
+                {@const hasHorizontalWall = hasWall(col, row, 'h')}
+                {@const hasVerticalWall = hasWall(col, row, 'v')}
 
                 <button
-                  class={`absolute rounded ${hasHorizontalWall ? "bg-amber-400 shadow-lg shadow-amber-500/20" : "bg-transparent"} ${!hasHorizontalWall && canPlaceWalls ? "hover:bg-amber-500/20" : ""} ${hoveredWall === horizontalKey ? "bg-amber-400/50 ring-2 ring-amber-300" : ""}`}
+                  class={`absolute rounded ${hasHorizontalWall ? 'bg-amber-400 shadow-lg shadow-amber-500/20' : 'bg-transparent'} ${!hasHorizontalWall && canPlaceWalls ? 'hover:bg-amber-500/20' : ''} ${hoveredWall === horizontalKey ? 'bg-amber-400/50 ring-2 ring-amber-300' : ''}`}
                   style={horizontalWallStyle(colIndex, rowIndex)}
                   title={`Place horizontal wall at ${horizontalKey}`}
                   disabled={disabled ||
                     hasHorizontalWall ||
                     hasVerticalWall ||
                     (activePlayer?.wallsRemaining ?? 0) <= 0}
-                  on:click={() => handleWallSlotClick(col, row, "h")}
+                  on:click={() => handleWallSlotClick(col, row, 'h')}
                   on:mouseenter={() => (hoveredWall = horizontalKey)}
                   on:mouseleave={() => (hoveredWall = null)}
                 ></button>
 
                 <button
-                  class={`absolute rounded ${hasVerticalWall ? "bg-amber-400 shadow-lg shadow-amber-500/20" : "bg-transparent"} ${!hasVerticalWall && canPlaceWalls ? "hover:bg-amber-500/20" : ""} ${hoveredWall === verticalKey ? "bg-amber-400/50 ring-2 ring-amber-300" : ""}`}
+                  class={`absolute rounded ${hasVerticalWall ? 'bg-amber-400 shadow-lg shadow-amber-500/20' : 'bg-transparent'} ${!hasVerticalWall && canPlaceWalls ? 'hover:bg-amber-500/20' : ''} ${hoveredWall === verticalKey ? 'bg-amber-400/50 ring-2 ring-amber-300' : ''}`}
                   style={verticalWallStyle(colIndex, rowIndex)}
                   title={`Place vertical wall at ${verticalKey}`}
                   disabled={disabled ||
                     hasVerticalWall ||
                     hasHorizontalWall ||
                     (activePlayer?.wallsRemaining ?? 0) <= 0}
-                  on:click={() => handleWallSlotClick(col, row, "v")}
+                  on:click={() => handleWallSlotClick(col, row, 'v')}
                   on:mouseenter={() => (hoveredWall = verticalKey)}
                   on:mouseleave={() => (hoveredWall = null)}
                 ></button>
@@ -247,18 +209,17 @@
             {/each}
           </div>
         </div>
+
         {#if gameState.winner}
           <div
-            class="absolute inset-0 flex items-center justify-center bg-black/70 z-50"
+            class="absolute inset-0 z-50 flex items-center justify-center bg-black/70"
             transition:fade={{ duration: 1000 }}
           >
-            <div class="text-center animate-bounce">
-              <h2 class="text-4xl font-bold text-white mb-4">
-                {gameState.winner === gameState.currentPlayer
-                  ? "You Win!"
-                  : "You Lose!"}
+            <div class="animate-bounce text-center">
+              <h2 class="mb-4 text-4xl font-bold text-white">
+                Game ended!
               </h2>
-              <p class="text-xl text-gray-300">
+              <p class="text-4xl font-bold text-white">
                 Player {gameState.winner} is the winner!
               </p>
             </div>
@@ -273,21 +234,20 @@
       >
         Turn: Player {gameState.currentPlayer}
       </div>
+
       <div
         class="mono rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-400"
       >
-        P1 walls: {gameState.players[0]?.wallsRemaining ?? 0} • P2 walls: {gameState
-          .players[1]?.wallsRemaining ?? 0}
+        P1 walls: {gameState.players[0]?.wallsRemaining ?? 0} • P2 walls: {gameState.players[1]?.wallsRemaining ?? 0}
       </div>
+
       <div
-        class="mono rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm {gameState.winner
-          ? 'text-green-400'
-          : 'text-zinc-400'}"
+        class="mono rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm {gameState.winner ? 'text-green-400' : 'text-zinc-400'}"
       >
         {#if gameState.winner}
           Winner: Player {gameState.winner}
         {:else}
-          Legal moves: {gameState.legalMoves.join(", ")}
+          Legal moves: {gameState.legalMoves.join(', ')}
         {/if}
       </div>
     </div>

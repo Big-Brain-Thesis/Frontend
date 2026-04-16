@@ -30,14 +30,15 @@ export type Move = {
 };
 
 export type GameMode = '2-player' | '4-player';
-export type Difficulty = 'random' | 'easy' | 'medium' | 'hard' | 'expert';
+export type Opponent = 'human' | 'dionysus' | 'hermes';
+export type Difficulty = Opponent;
 
 export type GameStatus = 'idle' | 'ready' | 'in-progress' | 'paused' | 'finished' | 'error';
 
 export type GameState = {
   sessionId: string;
   mode: GameMode;
-  difficulty: Difficulty;
+  difficulty: Opponent;
   status: GameStatus;
   currentPlayer: number;
   players: Player[];

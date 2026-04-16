@@ -1,293 +1,123 @@
-import type { Difficulty, GameMode, GameState, Move, Player, Position, Wall } from '$lib/types/game';
-import { formatSquare, isValidNotation, isWallNotation, parseSquare, parseWall } from '$lib/utils/notation';
+import { addLog } from '$lib/stores/logger';
+import type { GameMode, GameState, Opponent } from '$lib/types/game';
 
-const MOCK_DELAY = 250;
-const COLS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
+type ApiErrorResponse = {
+  error?: string;
+};
 
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+type StartGameRequest = {
+  mode: GameMode;
+  opponent: Opponent;
+  eegEnabled: boolean;
+};
 
-function cloneState<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function nextPlayer(currentPlayer: number, mode: GameMode): number {
-  if (mode === '4-player') {
-    return currentPlayer === 4 ? 1 : currentPlayer + 1;
+function getApiBase(): string {
+  const envBase = (import.meta.env.PUBLIC_API_BASE as string | undefined)?.trim();
+  if (envBase) {
+    return envBase.replace(/\/$/, '');
   }
 
-  return currentPlayer === 1 ? 2 : 1;
-}
-
-function getGoalRow(playerId: number): number {
-  return playerId === 1 ? 9 : 1;
-}
-
-function inBounds(position: Position): boolean {
-  return COLS.includes(position.col) && position.row >= 1 && position.row <= 9;
-}
-
-function getNeighborSquares(position: Position): Position[] {
-  const colIndex = COLS.indexOf(position.col);
-  const candidates = [
-    { col: COLS[colIndex], row: position.row + 1 },
-    { col: COLS[colIndex], row: position.row - 1 },
-    { col: COLS[colIndex - 1], row: position.row },
-    { col: COLS[colIndex + 1], row: position.row }
-  ].filter((candidate): candidate is Position => Boolean(candidate.col));
-
-  return candidates.filter(inBounds);
-}
-
-function edgeKey(a: Position, b: Position): string {
-  const left = formatSquare(a);
-  const right = formatSquare(b);
-  return left < right ? `${left}|${right}` : `${right}|${left}`;
-}
-
-function buildBlockedEdges(walls: Wall[]): Set<string> {
-  const blocked = new Set<string>();
-
-  for (const wall of walls) {
-    const colIndex = COLS.indexOf(wall.position.col);
-    const nextCol = COLS[colIndex + 1];
-
-    if (!nextCol) continue;
-
-    if (wall.orientation === 'h') {
-      const lowerRow = wall.position.row;
-      const upperRow = wall.position.row + 1;
-
-      blocked.add(edgeKey({ col: wall.position.col, row: lowerRow }, { col: wall.position.col, row: upperRow }));
-      blocked.add(edgeKey({ col: nextCol, row: lowerRow }, { col: nextCol, row: upperRow }));
-    } else {
-      const lowerRow = wall.position.row;
-      const upperRow = wall.position.row + 1;
-
-      blocked.add(edgeKey({ col: wall.position.col, row: lowerRow }, { col: nextCol, row: lowerRow }));
-      blocked.add(edgeKey({ col: wall.position.col, row: upperRow }, { col: nextCol, row: upperRow }));
-    }
+  if (typeof window === 'undefined') {
+    return 'http://127.0.0.1:3000';
   }
 
-  return blocked;
+  return `http://${window.location.hostname}:3000`;
 }
 
-function computeLegalMoves(players: Player[], currentPlayer: number, walls: Wall[]): string[] {
-  const activePlayer = players.find((player) => player.id === currentPlayer);
-  if (!activePlayer) return [];
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = init?.method ?? 'GET';
+  const url = `${getApiBase()}${path}`;
 
-  const occupied = new Set(players.filter((player) => player.id !== currentPlayer).map((player) => formatSquare(player.position)));
-  const blockedEdges = buildBlockedEdges(walls);
+  addLog('DEBUG', 'API', `${method} ${path}`, { url });
 
-  return getNeighborSquares(activePlayer.position)
-    .filter((neighbor) => !occupied.has(formatSquare(neighbor)))
-    .filter((neighbor) => !blockedEdges.has(edgeKey(activePlayer.position, neighbor)))
-    .map(formatSquare);
-}
+  let response: Response;
 
-function createInitialPlayers(): Player[] {
-  return [
-    {
-      id: 1,
-      color: 'blue',
-      position: { col: 'e', row: 1 },
-      wallsRemaining: 10,
-      isAI: false
-    },
-    {
-      id: 2,
-      color: 'red',
-      position: { col: 'e', row: 9 },
-      wallsRemaining: 10,
-      isAI: true
-    }
-  ];
-}
+  try {
+    response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers ?? {})
+      },
+      ...init
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog('ERROR', 'API', `${method} ${path} failed`, { message, url });
+    throw new Error(message);
+  }
 
-function createInitialGameState(mode: GameMode, difficulty: Difficulty): GameState {
-  const players = createInitialPlayers();
+  if (!response.ok) {
+    let errorMessage = `Request failed with ${response.status}`;
 
-  return {
-    sessionId: `session-${Date.now()}`,
-    mode,
-    difficulty,
-    status: 'in-progress',
-    currentPlayer: 1,
-    players,
-    walls: [],
-    moveHistory: [],
-    winner: null,
-    legalMoves: computeLegalMoves(players, 1, []),
-    boardSize: 9,
-    definedPosition: 'e1 e9 / - / 1 / 10 10'
-  };
-}
-
-function buildPositionString(state: GameState): string {
-  const positions = state.players.map((player) => formatSquare(player.position)).join(' ');
-  const walls = state.walls.length ? state.walls.map((wall) => `${formatSquare(wall.position)}${wall.orientation}`).join(' ') : '-';
-  const wallsRemaining = state.players.map((player) => player.wallsRemaining).join(' ');
-  return `${positions} / ${walls} / ${state.currentPlayer} / ${wallsRemaining}`;
-}
-
-function wallPlacementConflict(walls: Wall[], candidate: Wall): string | null {
-  const candidateColIndex = COLS.indexOf(candidate.position.col);
-
-  for (const wall of walls) {
-    if (wall.position.col === candidate.position.col && wall.position.row === candidate.position.row) {
-      return wall.orientation === candidate.orientation ? 'Wall already exists there' : 'Walls cannot cross at the same anchor';
-    }
-
-    const wallColIndex = COLS.indexOf(wall.position.col);
-
-    if (candidate.orientation === 'h' && wall.orientation === 'h' && wall.position.row === candidate.position.row) {
-      if (Math.abs(wallColIndex - candidateColIndex) === 1) {
-        return 'Horizontal walls cannot overlap';
+    try {
+      const data = (await response.json()) as ApiErrorResponse;
+      if (data?.error) {
+        errorMessage = data.error;
+      }
+    } catch {
+      try {
+        const text = await response.text();
+        if (text) {
+          errorMessage = text;
+        }
+      } catch {
+        // ignore
       }
     }
 
-    if (candidate.orientation === 'v' && wall.orientation === 'v' && wall.position.col === candidate.position.col) {
-      if (Math.abs(wall.position.row - candidate.position.row) === 1) {
-        return 'Vertical walls cannot overlap';
-      }
-    }
+    addLog('WARN', 'API', `${method} ${path} -> ${response.status}`, {
+      status: response.status,
+      error: errorMessage,
+      url
+    });
+
+    throw new Error(errorMessage);
   }
 
-  return null;
-}
+  const data = (await response.json()) as T;
 
-function applyMove(state: GameState, moveNotation: string, playerId: number): { valid: boolean; state?: GameState; error?: string } {
-  if (!isValidNotation(moveNotation)) {
-    return { valid: false, error: 'Invalid notation format' };
-  }
+  addLog('DEBUG', 'API', `${method} ${path} -> ${response.status}`, {
+    status: response.status,
+    url
+  });
 
-  if (state.currentPlayer !== playerId) {
-    return { valid: false, error: "Not this player's turn" };
-  }
-
-  const nextState = cloneState(state);
-  const activePlayer = nextState.players.find((player) => player.id === playerId);
-
-  if (!activePlayer) {
-    return { valid: false, error: 'Active player missing' };
-  }
-
-  const occupiedSquares = new Set(nextState.players.filter((player) => player.id !== playerId).map((player) => formatSquare(player.position)));
-
-  if (isWallNotation(moveNotation)) {
-    const wallMove = parseWall(moveNotation);
-
-    if (!wallMove) {
-      return { valid: false, error: 'Invalid wall notation' };
-    }
-
-    if (activePlayer.wallsRemaining <= 0) {
-      return { valid: false, error: 'No walls remaining' };
-    }
-
-    const conflict = wallPlacementConflict(nextState.walls, wallMove as Wall);
-    if (conflict) {
-      return { valid: false, error: conflict };
-    }
-
-    nextState.walls.push(wallMove as Wall);
-    activePlayer.wallsRemaining -= 1;
-  } else {
-    const square = parseSquare(moveNotation);
-
-    if (!square) {
-      return { valid: false, error: 'Invalid square notation' };
-    }
-
-    if (occupiedSquares.has(formatSquare(square))) {
-      return { valid: false, error: 'Target square is occupied' };
-    }
-
-    const legalMoves = computeLegalMoves(nextState.players, playerId, nextState.walls);
-    if (!legalMoves.includes(moveNotation)) {
-      return { valid: false, error: 'Move is not legal in the current ruleset' };
-    }
-
-    activePlayer.position = square;
-  }
-
-  const move: Move = {
-    notation: moveNotation,
-    type: isWallNotation(moveNotation) ? 'wall' : 'pawn',
-    player: playerId,
-    timestamp: Date.now()
-  };
-
-  nextState.moveHistory.push(move);
-
-  if (activePlayer.position.row === getGoalRow(playerId)) {
-    nextState.winner = playerId;
-    nextState.status = 'finished';
-    nextState.legalMoves = [];
-    nextState.definedPosition = buildPositionString(nextState);
-    return { valid: true, state: nextState };
-  }
-
-  nextState.currentPlayer = nextPlayer(playerId, nextState.mode);
-  nextState.legalMoves = computeLegalMoves(nextState.players, nextState.currentPlayer, nextState.walls);
-  nextState.definedPosition = buildPositionString(nextState);
-
-  return { valid: true, state: nextState };
+  return data;
 }
 
 export const apiService = {
-  async startGame(mode: GameMode, difficulty: Difficulty, eegEnabled: boolean): Promise<GameState> {
-    await wait(MOCK_DELAY);
-    return createInitialGameState(mode, difficulty);
+  startGame(mode: GameMode, opponent: Opponent, eegEnabled: boolean): Promise<GameState> {
+    const body: StartGameRequest = {
+      mode,
+      opponent,
+      eegEnabled
+    };
+
+    return request<GameState>('/api/game/start', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
   },
 
-  async getGameState(sessionId: string): Promise<GameState> {
-    await wait(MOCK_DELAY);
-    return createInitialGameState('2-player', 'medium');
+  getGameState(sessionId: string): Promise<GameState> {
+    return request<GameState>(`/api/game/${sessionId}`);
   },
 
-  async submitMove(
-    sessionId: string,
-    moveNotation: string,
-    currentState: GameState,
-    playerId = currentState.currentPlayer
-  ): Promise<{ valid: boolean; state?: GameState; error?: string }> {
-    await wait(MOCK_DELAY);
-    return applyMove(currentState, moveNotation.toLowerCase().trim(), playerId);
+  submitMove(sessionId: string, moveNotation: string): Promise<GameState> {
+    return request<GameState>(`/api/game/${sessionId}/move`, {
+      method: 'POST',
+      body: JSON.stringify({
+        move: moveNotation.toLowerCase().trim()
+      })
+    });
   },
 
-  async resetGame(currentState: GameState): Promise<GameState> {
-    await wait(MOCK_DELAY);
-    return createInitialGameState(currentState.mode, currentState.difficulty);
+  resetGame(sessionId: string): Promise<GameState> {
+    return request<GameState>(`/api/game/${sessionId}/reset`, {
+      method: 'POST'
+    });
   },
 
-  async ping(): Promise<{ ok: boolean; latency: number }> {
-    const start = Date.now();
-    await wait(50);
-    return { ok: true, latency: Date.now() - start };
-  },
-
-  async getAIMove(state: GameState): Promise<string> {
-    await wait(500);
-
-    const legalMoves = state.legalMoves;
-    if (legalMoves.length === 0) {
-      return 'e8';
-    }
-
-    const targetRow = getGoalRow(state.currentPlayer);
-
-    const bestMove = [...legalMoves].sort((left, right) => {
-      const leftRow = parseSquare(left)?.row ?? 0;
-      const rightRow = parseSquare(right)?.row ?? 0;
-      return Math.abs(leftRow - targetRow) - Math.abs(rightRow - targetRow);
-    })[0];
-
-    if (state.difficulty === 'random') {
-      return legalMoves[Math.floor(Math.random() * legalMoves.length)] ?? bestMove;
-    }
-
-    return bestMove;
+  ping(): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>('/api/health');
   }
 };

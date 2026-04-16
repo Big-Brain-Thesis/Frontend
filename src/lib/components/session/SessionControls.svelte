@@ -1,33 +1,34 @@
 <script lang="ts">
-  import type { Difficulty } from '$lib/types/game';
+  import type { Opponent } from '$lib/types/game';
 
-  export let difficulty: Difficulty = 'medium';
+  export let opponent: Opponent = 'dionysus';
   export let eegEnabled = false;
   export let gameActive = false;
   export let disabled = false;
   export let onNewGame: () => void;
   export let onReset: () => void;
-  export let onDifficultyChange: (value: Difficulty) => void;
+  export let onOpponentChange: (value: Opponent) => void;
   export let onEEGEnabledChange: (value: boolean) => void;
 </script>
 
-<div class="rounded border border-zinc-800 bg-zinc-900 p-4 space-y-4">
+<div class="space-y-4 rounded border border-zinc-800 bg-zinc-900 p-4">
   <h3 class="mono text-sm uppercase tracking-wider text-zinc-200">Session Controls</h3>
 
   <div class="space-y-2">
-    <label class="mono text-xs uppercase tracking-wider text-zinc-400" for="difficulty">AI Difficulty</label>
+    <label class="mono text-xs uppercase tracking-wider text-zinc-400" for="opponent">
+      Opponent
+    </label>
+
     <select
-      id="difficulty"
+      id="opponent"
       class="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none ring-0"
-      value={difficulty}
+      bind:value={opponent}
       disabled={disabled}
-      on:change={(event) => onDifficultyChange((event.currentTarget as HTMLSelectElement).value as Difficulty)}
+      on:change={() => onOpponentChange(opponent)}
     >
-      <option value="random">Random</option>
-      <option value="easy">Easy</option>
-      <option value="medium">Medium</option>
-      <option value="hard">Hard</option>
-      <option value="expert">Expert</option>
+      <option value="human">Human</option>
+      <option value="dionysus">Dionysus</option>
+      <option value="hermes">Hermes</option>
     </select>
   </div>
 

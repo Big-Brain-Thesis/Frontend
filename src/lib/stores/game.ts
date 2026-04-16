@@ -1,57 +1,89 @@
 import { get, writable } from 'svelte/store';
 import { apiService } from '$lib/services/api';
-import type { Difficulty, GameMode, GameState } from '$lib/types/game';
+import type { GameMode, GameState, Opponent } from '$lib/types/game';
 import { addLog } from '$lib/stores/logger';
 
 export const gameState = writable<GameState | null>(null);
 export const isLoading = writable(false);
-export const apiConnected = writable(true);
+export const apiConnected = writable(false);
+export const lastApiPing = writable<number | null>(null);
+export const apiError = writable<string | null>(null);
+export const selectedOpponent = writable<Opponent>('dionysus');
 
-async function runAIMove() {
-  const current = get(gameState);
-
-  if (!current || current.currentPlayer !== 2 || current.status !== 'in-progress') {
-    return;
-  }
-
-  addLog('INFO', 'GAME', 'Waiting for AI move...');
-  isLoading.set(true);
-
-  try {
-    const aiMove = await apiService.getAIMove(current);
-    addLog('INFO', 'MOVE', `AI played: ${aiMove}`);
-
-    const result = await apiService.submitMove(current.sessionId, aiMove, current, 2);
-
-    if (result.valid && result.state) {
-      gameState.set(result.state);
-
-      if (result.state.winner) {
-        addLog('INFO', 'GAME', `Game finished. Winner: Player ${result.state.winner}`);
-      } else {
-        addLog('INFO', 'GAME', 'Your turn');
-      }
-    } else {
-      addLog('ERROR', 'MOVE', `AI move rejected: ${result.error ?? 'Unknown error'}`);
-    }
-  } catch (error) {
-    addLog('ERROR', 'API', `AI move failed: ${String(error)}`);
-  } finally {
-    isLoading.set(false);
+function formatOpponent(opponent: Opponent): string {
+  switch (opponent) {
+    case 'human':
+      return 'Human';
+    case 'dionysus':
+      return 'Dionysus';
+    case 'hermes':
+      return 'Hermes';
   }
 }
 
-export async function startNewGame(mode: GameMode, difficulty: Difficulty, eegEnabled: boolean) {
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function markApiOk() {
+  apiConnected.set(true);
+  lastApiPing.set(Date.now());
+  apiError.set(null);
+}
+
+function markApiDown(message: string) {
+  apiConnected.set(false);
+  lastApiPing.set(Date.now());
+  apiError.set(message);
+}
+
+function moveKey(move: GameState['moveHistory'][number]): string {
+  return `${move.player}:${move.timestamp}:${move.notation}:${move.type}`;
+}
+
+function syncMoveLogs(previous: GameState | null, next: GameState) {
+  const seen = new Set((previous?.moveHistory ?? []).map(moveKey));
+
+  for (const move of next.moveHistory) {
+    if (seen.has(moveKey(move))) {
+      continue;
+    }
+
+    addLog(
+      'INFO',
+      'MOVE',
+      `Player ${move.player} ${move.type === 'wall' ? 'placed wall' : 'moved'} ${move.notation}`
+    );
+  }
+}
+
+export async function refreshApiHealth() {
+  try {
+    await apiService.ping();
+    markApiOk();
+  } catch (error) {
+    markApiDown(toErrorMessage(error));
+  }
+}
+
+export async function startNewGame(mode: GameMode, opponent: Opponent, eegEnabled: boolean) {
   isLoading.set(true);
-  addLog('INFO', 'SESSION', `Starting new ${mode} game at ${difficulty} difficulty`);
+  selectedOpponent.set(opponent);
+
+  addLog('INFO', 'SESSION', `Starting new ${mode} game against ${formatOpponent(opponent)}`);
 
   try {
-    const state = await apiService.startGame(mode, difficulty, eegEnabled);
+    const state = await apiService.startGame(mode, opponent, eegEnabled);
+
     gameState.set(state);
+    markApiOk();
+
     addLog('INFO', 'GAME', `Game started: session ${state.sessionId}`);
-    addLog('INFO', 'GAME', 'Player 1 (human) vs Player 2 (AI)');
+    addLog('INFO', 'SESSION', `Backend opponent: ${formatOpponent(opponent)}`);
   } catch (error) {
-    addLog('ERROR', 'API', `Failed to start game: ${String(error)}`);
+    const message = toErrorMessage(error);
+    markApiDown(message);
+    addLog('ERROR', 'API', `Failed to start game: ${message}`);
   } finally {
     isLoading.set(false);
   }
@@ -61,33 +93,35 @@ export async function submitMove(moveNotation: string) {
   const current = get(gameState);
   if (!current) return;
 
-  addLog('INFO', 'MOVE', `Submitting move: ${moveNotation}`);
   isLoading.set(true);
+  addLog('INFO', 'MOVE', `Submitting move ${moveNotation}`);
 
   try {
-    const result = await apiService.submitMove(current.sessionId, moveNotation, current);
+    const state = await apiService.submitMove(current.sessionId, moveNotation);
+    const opponent = get(selectedOpponent);
 
-    if (result.valid && result.state) {
-      gameState.set(result.state);
-      addLog('INFO', 'MOVE', `Move accepted: ${moveNotation}`);
+    syncMoveLogs(current, state);
+    gameState.set(state);
+    markApiOk();
 
-      if (result.state.winner) {
-        addLog('INFO', 'GAME', `Game finished. Winner: Player ${result.state.winner}`);
-      }
-    } else {
-      addLog('ERROR', 'MOVE', `Move rejected: ${result.error ?? 'Unknown error'}`);
+    if (state.winner) {
+      addLog('INFO', 'GAME', `Game finished. Winner: Player ${state.winner}`);
+    } else if (opponent !== 'human' && state.currentPlayer === 1) {
+      addLog('INFO', 'GAME', `${formatOpponent(opponent)} completed its turn`);
     }
   } catch (error) {
-    addLog('ERROR', 'API', `Failed to submit move: ${String(error)}`);
+    const message = toErrorMessage(error);
+
+    if (error instanceof TypeError) {
+      markApiDown(message);
+    } else {
+      lastApiPing.set(Date.now());
+      apiError.set(message);
+    }
+
+    addLog('ERROR', 'MOVE', `Move rejected: ${message}`);
   } finally {
     isLoading.set(false);
-  }
-
-  const next = get(gameState);
-  if (next?.currentPlayer === 2 && next.status === 'in-progress') {
-    window.setTimeout(() => {
-      void runAIMove();
-    }, 400);
   }
 }
 
@@ -99,11 +133,21 @@ export async function resetGame() {
   isLoading.set(true);
 
   try {
-    const state = await apiService.resetGame(current);
+    const state = await apiService.resetGame(current.sessionId);
     gameState.set(state);
+    markApiOk();
     addLog('INFO', 'GAME', 'Game reset');
   } catch (error) {
-    addLog('ERROR', 'API', `Failed to reset game: ${String(error)}`);
+    const message = toErrorMessage(error);
+
+    if (error instanceof TypeError) {
+      markApiDown(message);
+    } else {
+      lastApiPing.set(Date.now());
+      apiError.set(message);
+    }
+
+    addLog('ERROR', 'API', `Failed to reset game: ${message}`);
   } finally {
     isLoading.set(false);
   }

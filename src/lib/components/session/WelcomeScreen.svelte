@@ -1,8 +1,8 @@
 <div class="rounded-lg border border-zinc-800 bg-zinc-900 p-8">
   <div class="max-w-3xl space-y-6">
     <div>
-      <div class="mono mb-2 text-xs uppercase tracking-[0.2em] text-zinc-500">Quoridor research frontend</div>
-      <h2 class="text-3xl font-semibold text-zinc-100">SvelteKit rewrite ready</h2>
+      <div class="mono mb-2 text-xs uppercase tracking-[0.2em] text-zinc-500">Quoridor research</div>
+      <h2 class="text-3xl font-semibold text-zinc-100">Big Brain</h2>
       <p class="mt-3 max-w-2xl text-zinc-400">
         Start a session from the right panel. The board, logs, mock backend state, EEG stream, export tools,
         and AI response flow are wired into Svelte stores instead of React hooks.
