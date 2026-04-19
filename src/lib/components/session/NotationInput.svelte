@@ -29,7 +29,9 @@
 <div class="rounded border border-zinc-800 bg-zinc-900 p-4 space-y-3">
   <div>
     <h3 class="mono text-sm uppercase tracking-wider text-zinc-200">Manual Move Entry</h3>
-    <p class="mt-1 text-xs text-zinc-500">Use this for wall moves, since board clicks only target pawn squares.</p>
+    <p class="mt-1 text-xs text-zinc-500">
+      Optional direct input. Examples: e2 for a pawn move, e3h for a wall.
+    </p>
   </div>
 
   <div class="flex gap-2">

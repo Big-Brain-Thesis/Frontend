@@ -29,7 +29,7 @@ export type Move = {
   timestamp: number;
 };
 
-export type GameMode = '2-player' | '4-player';
+export type GameMode = '2-player';
 export type Opponent = 'human' | 'dionysus' | 'hermes';
 export type Difficulty = Opponent;
 
@@ -46,6 +46,7 @@ export type GameState = {
   moveHistory: Move[];
   winner: number | null;
   legalMoves: string[];
+  legalWalls: string[];
   boardSize: number;
   evaluation?: number;
   definedPosition?: string;

@@ -35,6 +35,7 @@
   );
 
   $: legalMoveSet = new Set(gameState?.legalMoves ?? []);
+  $: legalWallSet = new Set(gameState?.legalWalls ?? []);
 
   $: wallSet = new Set(
     (gameState?.walls ?? []).map((wall) => `${formatSquare(wall.position)}${wall.orientation}`)
@@ -60,6 +61,10 @@
 
   function isLegalMove(col: string, row: number): boolean {
     return legalMoveSet.has(`${col}${row}`);
+  }
+
+  function isLegalWall(col: string, row: number, orientation: WallOrientation): boolean {
+    return legalWallSet.has(`${col}${row}${orientation}`);
   }
 
   function hasWall(col: string, row: number, orientation: WallOrientation): boolean {
@@ -154,8 +159,8 @@
                   style={`left:${squareLeft(colIndex)}px;top:${squareTop(rowIndex)}px;width:${SQUARE}px;height:${SQUARE}px;`}
                   disabled={disabled || !legal}
                   title={`Move to ${squareKey}`}
-                  on:mouseenter={() => (hoveredSquare = squareKey)}
-                  on:mouseleave={() => (hoveredSquare = null)}
+                  on:mouseenter={() => legal && (hoveredSquare = squareKey)}
+                  on:mouseleave={() => hoveredSquare === squareKey && (hoveredSquare = null)}
                   on:click={() => handleSquareClick(col, row)}
                 >
                   <div
@@ -179,31 +184,27 @@
                 {@const verticalKey = wallNotation(col, row, 'v')}
                 {@const hasHorizontalWall = hasWall(col, row, 'h')}
                 {@const hasVerticalWall = hasWall(col, row, 'v')}
+                {@const horizontalLegal = isLegalWall(col, row, 'h')}
+                {@const verticalLegal = isLegalWall(col, row, 'v')}
 
                 <button
-                  class={`absolute rounded ${hasHorizontalWall ? 'bg-amber-400 shadow-lg shadow-amber-500/20' : 'bg-transparent'} ${!hasHorizontalWall && canPlaceWalls ? 'hover:bg-amber-500/20' : ''} ${hoveredWall === horizontalKey ? 'bg-amber-400/50 ring-2 ring-amber-300' : ''}`}
+                  class={`absolute rounded ${hasHorizontalWall ? 'bg-amber-400 shadow-lg shadow-amber-500/20' : 'bg-transparent'} ${horizontalLegal && canPlaceWalls ? 'cursor-pointer hover:bg-amber-500/20' : ''} ${hoveredWall === horizontalKey && horizontalLegal ? 'bg-amber-400/50 ring-2 ring-amber-300' : ''}`}
                   style={horizontalWallStyle(colIndex, rowIndex)}
-                  title={`Place horizontal wall at ${horizontalKey}`}
-                  disabled={disabled ||
-                    hasHorizontalWall ||
-                    hasVerticalWall ||
-                    (activePlayer?.wallsRemaining ?? 0) <= 0}
+                  title={horizontalLegal ? `Place horizontal wall at ${horizontalKey}` : `Illegal horizontal wall at ${horizontalKey}`}
+                  disabled={disabled || !horizontalLegal}
                   on:click={() => handleWallSlotClick(col, row, 'h')}
-                  on:mouseenter={() => (hoveredWall = horizontalKey)}
-                  on:mouseleave={() => (hoveredWall = null)}
+                  on:mouseenter={() => horizontalLegal && (hoveredWall = horizontalKey)}
+                  on:mouseleave={() => hoveredWall === horizontalKey && (hoveredWall = null)}
                 ></button>
 
                 <button
-                  class={`absolute rounded ${hasVerticalWall ? 'bg-amber-400 shadow-lg shadow-amber-500/20' : 'bg-transparent'} ${!hasVerticalWall && canPlaceWalls ? 'hover:bg-amber-500/20' : ''} ${hoveredWall === verticalKey ? 'bg-amber-400/50 ring-2 ring-amber-300' : ''}`}
+                  class={`absolute rounded ${hasVerticalWall ? 'bg-amber-400 shadow-lg shadow-amber-500/20' : 'bg-transparent'} ${verticalLegal && canPlaceWalls ? 'cursor-pointer hover:bg-amber-500/20' : ''} ${hoveredWall === verticalKey && verticalLegal ? 'bg-amber-400/50 ring-2 ring-amber-300' : ''}`}
                   style={verticalWallStyle(colIndex, rowIndex)}
-                  title={`Place vertical wall at ${verticalKey}`}
-                  disabled={disabled ||
-                    hasVerticalWall ||
-                    hasHorizontalWall ||
-                    (activePlayer?.wallsRemaining ?? 0) <= 0}
+                  title={verticalLegal ? `Place vertical wall at ${verticalKey}` : `Illegal vertical wall at ${verticalKey}`}
+                  disabled={disabled || !verticalLegal}
                   on:click={() => handleWallSlotClick(col, row, 'v')}
-                  on:mouseenter={() => (hoveredWall = verticalKey)}
-                  on:mouseleave={() => (hoveredWall = null)}
+                  on:mouseenter={() => verticalLegal && (hoveredWall = verticalKey)}
+                  on:mouseleave={() => hoveredWall === verticalKey && (hoveredWall = null)}
                 ></button>
               {/each}
             {/each}
@@ -248,6 +249,8 @@
           Winner: Player {gameState.winner}
         {:else}
           Legal moves: {gameState.legalMoves.join(', ')}
+          <br />
+          Legal walls: {gameState.legalWalls.length}
         {/if}
       </div>
     </div>
