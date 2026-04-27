@@ -6,6 +6,7 @@
   import SessionControls from '$lib/components/session/SessionControls.svelte';
   import StatusPanel from '$lib/components/session/StatusPanel.svelte';
   import AdvancedPanel from '$lib/components/session/AdvancedPanel.svelte';
+  import SessionArchive from '$lib/components/session/SessionArchive.svelte';
   import WelcomeScreen from '$lib/components/session/WelcomeScreen.svelte';
   import EEGPanel from '$lib/components/eeg/EEGPanel.svelte';
   import DebugConsole from '$lib/components/logs/DebugConsole.svelte';
@@ -13,13 +14,27 @@
   import {
     gameState,
     isLoading,
+    isSubmitting,
+    isBotThinking,
     apiConnected,
     lastApiPing,
     apiError,
+    botAutoplay,
+    botSpeedMs,
+    savedGames,
+    replayState,
     refreshApiHealth,
     startNewGame,
     submitMove,
-    resetGame
+    playBotMove,
+    resetGame,
+    setBotAutoplay,
+    setBotSpeed,
+    saveCurrentGame,
+    refreshSavedGames,
+    loadSavedGame,
+    stepReplay,
+    exitReplay
   } from '$lib/stores/game';
   import { logs } from '$lib/stores/logger';
   import {
@@ -28,12 +43,13 @@
     stopEEGMonitoring,
     reconnectEEG
   } from '$lib/stores/eeg';
-  import type { Opponent } from '$lib/types/game';
+  import type { PlayerController } from '$lib/types/game';
 
-  let opponent: Opponent = 'dionysus';
+  let player1: PlayerController = 'human';
+  let player2: PlayerController = 'dionysus';
   let eegEnabled = false;
 
-  function formatOpponent(value: Opponent): string {
+  function formatController(value: PlayerController | string): string {
     switch (value) {
       case 'human':
         return 'Human';
@@ -41,15 +57,13 @@
         return 'Dionysus';
       case 'hermes':
         return 'Hermes';
+      default:
+        return value;
     }
   }
 
   function handleNewGame() {
-    startNewGame('2-player', opponent, eegEnabled);
-  }
-
-  function handleOpponentChange(value: Opponent) {
-    opponent = value;
+    startNewGame('2-player', player1, player2, eegEnabled);
   }
 
   function handleEEGEnabledChange(value: boolean) {
@@ -66,8 +80,39 @@
     submitMove(notation);
   }
 
+  function isTypingTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+
+    const tagName = target.tagName.toLowerCase();
+    return tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable;
+  }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (isTypingTarget(event.target)) return;
+
+    if ($replayState.active) {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        stepReplay(-1);
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        stepReplay(1);
+      }
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setBotSpeed($botSpeedMs - 100);
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setBotSpeed($botSpeedMs + 100);
+    }
+  }
+
   onMount(() => {
     refreshApiHealth();
+    refreshSavedGames();
 
     const interval = window.setInterval(() => {
       refreshApiHealth();
@@ -78,23 +123,33 @@
     };
   });
 
-  $: isHumanVsHuman = opponent === 'human';
+  $: currentPlayer = $gameState?.players[$gameState.currentPlayer - 1] ?? null;
+  $: replayActive = $replayState.active;
   $: canControlCurrentTurn =
-    $gameState !== null && (isHumanVsHuman || $gameState.currentPlayer === 1);
-  $: boardDisabled = $isLoading || !$gameState || !canControlCurrentTurn;
-  $: showBotWaiting =
     $gameState !== null &&
-    !isHumanVsHuman &&
+    !replayActive &&
     !$gameState.winner &&
-    $gameState.currentPlayer !== 1 &&
-    !$isLoading;
+    $gameState.status === 'in-progress' &&
+    currentPlayer !== null &&
+    !currentPlayer.isAI;
+  $: boardDisabled = !$gameState || !canControlCurrentTurn;
+  $: canStepBot =
+    $gameState !== null &&
+    !replayActive &&
+    !$gameState.winner &&
+    $gameState.status === 'in-progress' &&
+    currentPlayer !== null &&
+    currentPlayer.isAI;
+  $: showBotWaiting = canStepBot && !$isBotThinking;
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <svelte:head>
   <title>Big Brain | Quoridor SvelteKit</title>
   <meta
     name="description"
-    content="Research-oriented Quoridor interface with backend gameplay, opponent selection, EEG monitoring, session logs, and export tools."
+    content="Research-oriented Quoridor interface with backend gameplay, player selection, bot spectating, EEG monitoring, session logs, and local save/load."
   />
 </svelte:head>
 
@@ -111,15 +166,24 @@
       <div class="space-y-6 xl:w-full xl:max-w-[980px] xl:justify-self-center">
         {#if !$gameState}
           <WelcomeScreen />
-        {:else}
-          {#if showBotWaiting}
-            <div class="rounded border border-amber-700/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-              Waiting for {formatOpponent(opponent)} to move.
-            </div>
-          {/if}
+        {/if}
 
-          <div class="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 sm:p-6">
-            <QuoridorBoard gameState={$gameState} disabled={boardDisabled} onMove={handleMove} />
+        <div class="min-h-[760px] overflow-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-4 sm:p-6">
+          <QuoridorBoard gameState={$gameState} disabled={boardDisabled} onMove={handleMove} />
+        </div>
+
+        {#if replayActive}
+          <div class="rounded border border-amber-700/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            Replay mode. Use Arrow Left / Arrow Right to browse moves.
+          </div>
+        {:else if showBotWaiting}
+          <div class="rounded border border-amber-700/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            Waiting for Player {$gameState?.currentPlayer} bot
+            ({formatController($gameState?.difficulty ?? '')}) to move.
+          </div>
+        {:else if $isSubmitting}
+          <div class="rounded border border-blue-700/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
+            Move sent to backend. Board already updated optimistically.
           </div>
         {/if}
 
@@ -132,17 +196,38 @@
 
       <div class="space-y-4 xl:sticky xl:top-6">
         <SessionControls
-          {opponent}
+          {player1}
+          {player2}
           {eegEnabled}
+          botAutoplay={$botAutoplay}
+          botSpeedMs={$botSpeedMs}
+          botThinking={$isBotThinking}
+          {canStepBot}
           gameActive={$gameState !== null}
           disabled={$isLoading}
           onNewGame={handleNewGame}
           onReset={resetGame}
-          onOpponentChange={handleOpponentChange}
+          onPlayer1Change={(value) => (player1 = value)}
+          onPlayer2Change={(value) => (player2 = value)}
           onEEGEnabledChange={handleEEGEnabledChange}
+          onBotAutoplayChange={setBotAutoplay}
+          onBotSpeedChange={setBotSpeed}
+          onStepBot={playBotMove}
         />
 
         <NotationInput disabled={boardDisabled} onSubmit={handleMove} />
+
+        <SessionArchive
+          gameState={$gameState}
+          savedGames={$savedGames}
+          replayState={$replayState}
+          disabled={$isLoading}
+          onSave={saveCurrentGame}
+          onRefresh={refreshSavedGames}
+          onLoad={loadSavedGame}
+          onReplayStep={stepReplay}
+          onReplayExit={exitReplay}
+        />
 
         <StatusPanel
           gameState={$gameState}

@@ -1,35 +1,110 @@
 <script lang="ts">
-  import type { Opponent } from '$lib/types/game';
+  import type { PlayerController } from '$lib/types/game';
 
-  export let opponent: Opponent = 'dionysus';
+  export let player1: PlayerController = 'human';
+  export let player2: PlayerController = 'dionysus';
   export let eegEnabled = false;
   export let gameActive = false;
   export let disabled = false;
+  export let botAutoplay = true;
+  export let botSpeedMs = 400;
+  export let canStepBot = false;
+  export let botThinking = false;
+
   export let onNewGame: () => void;
   export let onReset: () => void;
-  export let onOpponentChange: (value: Opponent) => void;
+  export let onPlayer1Change: (value: PlayerController) => void;
+  export let onPlayer2Change: (value: PlayerController) => void;
   export let onEEGEnabledChange: (value: boolean) => void;
+  export let onBotAutoplayChange: (value: boolean) => void;
+  export let onBotSpeedChange: (value: number) => void;
+  export let onStepBot: () => void;
+
+  const controllers: Array<{ value: PlayerController; label: string }> = [
+    { value: 'human', label: 'Human' },
+    { value: 'dionysus', label: 'Dionysus bot' },
+    { value: 'hermes', label: 'Hermes bot' }
+  ];
 </script>
 
 <div class="space-y-4 rounded border border-zinc-800 bg-zinc-900 p-4">
   <h3 class="mono text-sm uppercase tracking-wider text-zinc-200">Session Controls</h3>
 
-  <div class="space-y-2">
-    <label class="mono text-xs uppercase tracking-wider text-zinc-400" for="opponent">
-      Opponent
+  <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
+    <div class="space-y-2">
+      <label class="mono text-xs uppercase tracking-wider text-zinc-400" for="player1">
+        Player 1
+      </label>
+
+      <select
+        id="player1"
+        class="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none ring-0"
+        bind:value={player1}
+        disabled={disabled}
+        on:change={() => onPlayer1Change(player1)}
+      >
+        {#each controllers as controller}
+          <option value={controller.value}>{controller.label}</option>
+        {/each}
+      </select>
+    </div>
+
+    <div class="space-y-2">
+      <label class="mono text-xs uppercase tracking-wider text-zinc-400" for="player2">
+        Player 2
+      </label>
+
+      <select
+        id="player2"
+        class="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none ring-0"
+        bind:value={player2}
+        disabled={disabled}
+        on:change={() => onPlayer2Change(player2)}
+      >
+        {#each controllers as controller}
+          <option value={controller.value}>{controller.label}</option>
+        {/each}
+      </select>
+    </div>
+  </div>
+
+  <div class="space-y-3 rounded border border-zinc-800 bg-zinc-950 p-3">
+    <label class="flex items-center gap-3 text-sm text-zinc-300">
+      <input
+        type="checkbox"
+        checked={botAutoplay}
+        disabled={disabled}
+        on:change={(event) => onBotAutoplayChange((event.currentTarget as HTMLInputElement).checked)}
+      />
+      <span class="mono">Autoplay bot turns</span>
     </label>
 
-    <select
-      id="opponent"
-      class="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none ring-0"
-      bind:value={opponent}
-      disabled={disabled}
-      on:change={() => onOpponentChange(opponent)}
+    <div class="space-y-2">
+      <div class="mono flex items-center justify-between text-xs text-zinc-400">
+        <label for="bot-speed">Bot speed</label>
+        <span>{(botSpeedMs / 1000).toFixed(1)}s / move</span>
+      </div>
+      <input
+        id="bot-speed"
+        class="w-full"
+        type="range"
+        min="100"
+        max="1000"
+        step="100"
+        value={botSpeedMs}
+        disabled={disabled}
+        on:input={(event) => onBotSpeedChange(Number((event.currentTarget as HTMLInputElement).value))}
+      />
+      <p class="mono text-[11px] text-zinc-500">Arrow Up = faster, Arrow Down = slower.</p>
+    </div>
+
+    <button
+      class="mono w-full rounded border border-zinc-700 px-3 py-2 text-xs text-zinc-300 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+      disabled={disabled || !canStepBot || botThinking}
+      on:click={onStepBot}
     >
-      <option value="human">Human</option>
-      <option value="dionysus">Dionysus</option>
-      <option value="hermes">Hermes</option>
-    </select>
+      {botThinking ? 'Bot moving...' : 'Step bot once'}
+    </button>
   </div>
 
   <label class="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-300">

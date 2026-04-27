@@ -1,0 +1,7 @@
+Click dreapta pt zid clic stanga pt mutat pion
+
+Sa pot selecta player 1 player 2 nu doar player 1, adica is 2 boti si 1 human. sa poti sa selectezi botii sa joace intre ei sau 2 boti lafel sa joace unu cu altu sau 2 oameni sau tot asa. sa faci ca sa poti spectata cum joaca botii si o bara de cat de rapid sa joace de la o miscare la fiecare 0.1 secunde la 1 secunda pe miscare sau din sageti 
+
+fa ca sa fie buton de Save-game(export session to json salvata local in fisierele jocului oridunde vrei tu) si Load-game care dupa click sa dea load la toate game sessionurile pe care le ai salvat si sa alegi tu un joc de acolo. dupa ce il alegi sa poti pargurge prin joc miscare dupa miscare din sageti 
+
+Poate sunete cand se misca pionii si cand pui zid 

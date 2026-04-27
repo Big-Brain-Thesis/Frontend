@@ -1,5 +1,11 @@
 import { addLog } from '$lib/stores/logger';
-import type { GameMode, GameState, Opponent } from '$lib/types/game';
+import type {
+  GameMode,
+  GameState,
+  LoadedGameResponse,
+  PlayerController,
+  SavedGameSummary
+} from '$lib/types/game';
 
 type ApiErrorResponse = {
   error?: string;
@@ -7,7 +13,9 @@ type ApiErrorResponse = {
 
 type StartGameRequest = {
   mode: GameMode;
-  opponent: Opponent;
+  player1: PlayerController;
+  player2: PlayerController;
+  opponent: PlayerController;
   eegEnabled: boolean;
 };
 
@@ -85,10 +93,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const apiService = {
-  startGame(mode: GameMode, opponent: Opponent, eegEnabled: boolean): Promise<GameState> {
+  startGame(
+    mode: GameMode,
+    player1: PlayerController,
+    player2: PlayerController,
+    eegEnabled: boolean
+  ): Promise<GameState> {
     const body: StartGameRequest = {
       mode,
-      opponent,
+      player1,
+      player2,
+      opponent: player2,
       eegEnabled
     };
 
@@ -111,8 +126,30 @@ export const apiService = {
     });
   },
 
+  playBotMove(sessionId: string): Promise<GameState> {
+    return request<GameState>(`/api/game/${sessionId}/bot-move`, {
+      method: 'POST'
+    });
+  },
+
   resetGame(sessionId: string): Promise<GameState> {
     return request<GameState>(`/api/game/${sessionId}/reset`, {
+      method: 'POST'
+    });
+  },
+
+  saveGame(sessionId: string): Promise<SavedGameSummary> {
+    return request<SavedGameSummary>(`/api/game/${sessionId}/save`, {
+      method: 'POST'
+    });
+  },
+
+  listSavedGames(): Promise<SavedGameSummary[]> {
+    return request<SavedGameSummary[]>('/api/saves');
+  },
+
+  loadSavedGame(saveId: string): Promise<LoadedGameResponse> {
+    return request<LoadedGameResponse>(`/api/saves/${encodeURIComponent(saveId)}/load`, {
       method: 'POST'
     });
   },

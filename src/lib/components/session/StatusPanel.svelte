@@ -53,9 +53,21 @@
       <div class="mono flex justify-between text-zinc-400">
         <span>Current turn</span>
         <span class="text-zinc-300">
-          Player {gameState.currentPlayer} {gameState.players[gameState.currentPlayer - 1]?.isAI ? '(AI)' : '(Human)'}
+          Player {gameState.currentPlayer} {gameState.players[gameState.currentPlayer - 1]?.isAI ? '(Bot)' : '(Human)'}
         </span>
       </div>
+
+      <div class="grid gap-2 pt-2">
+        {#each gameState.players as player}
+          <div class="mono flex justify-between rounded border border-zinc-800 bg-zinc-950 p-2 text-zinc-400">
+            <span>Player {player.id}</span>
+            <span class="text-zinc-300">
+              {player.isAI ? 'Bot' : 'Human'} · {player.position.col}{player.position.row} · {player.wallsRemaining} walls
+            </span>
+          </div>
+        {/each}
+      </div>
+
       {#if gameState.winner}
         <div class="mono flex justify-between text-zinc-400">
           <span>Winner</span>

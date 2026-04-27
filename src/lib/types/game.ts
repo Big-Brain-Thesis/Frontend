@@ -30,15 +30,17 @@ export type Move = {
 };
 
 export type GameMode = '2-player';
-export type Opponent = 'human' | 'dionysus' | 'hermes';
-export type Difficulty = Opponent;
+
+export type PlayerController = 'human' | 'dionysus' | 'hermes';
+export type Opponent = PlayerController;
+export type Difficulty = PlayerController;
 
 export type GameStatus = 'idle' | 'ready' | 'in-progress' | 'paused' | 'finished' | 'error';
 
 export type GameState = {
   sessionId: string;
   mode: GameMode;
-  difficulty: Opponent;
+  difficulty: string;
   status: GameStatus;
   currentPlayer: number;
   players: Player[];
@@ -56,4 +58,31 @@ export type ApiStatus = {
   connected: boolean;
   lastPing: number | null;
   error: string | null;
+};
+
+export type PlayerSetup = {
+  player1: PlayerController;
+  player2: PlayerController;
+};
+
+export type SavedGameSummary = {
+  id: string;
+  sessionId: string;
+  savedAt: number;
+  moveCount: number;
+  winner: number | null;
+  playerProfiles: PlayerController[];
+};
+
+export type LoadedGameResponse = {
+  summary: SavedGameSummary;
+  session: GameState;
+  replay: GameState[];
+};
+
+export type ReplayState = {
+  active: boolean;
+  index: number;
+  states: GameState[];
+  sourceId: string | null;
 };
