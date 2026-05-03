@@ -10,6 +10,7 @@
   export let botSpeedMs = 400;
   export let canStepBot = false;
   export let botThinking = false;
+  export let thinkingTimeMs = 1000;
 
   export let onNewGame: () => void;
   export let onReset: () => void;
@@ -19,6 +20,7 @@
   export let onBotAutoplayChange: (value: boolean) => void;
   export let onBotSpeedChange: (value: number) => void;
   export let onStepBot: () => void;
+  export let onThinkingTimeChange: (value: number) => void;
 
   const controllers: Array<{ value: PlayerController; label: string }> = [
     { value: 'human', label: 'Human' },
@@ -97,6 +99,27 @@
       />
       <p class="mono text-[11px] text-zinc-500">Arrow Up = faster, Arrow Down = slower.</p>
     </div>
+
+    {#if player2 === 'hermes'}
+      <div class="space-y-2">
+        <div class="mono flex items-center justify-between text-xs text-zinc-400">
+          <label for="thinking-time">AI thinking time</label>
+          <span>{(thinkingTimeMs / 1000).toFixed(1)}s</span>
+        </div>
+        <input
+          id="thinking-time"
+          class="w-full"
+          type="range"
+          min="100"
+          max="10000"
+          step="100"
+          value={thinkingTimeMs}
+          disabled={disabled}
+          on:input={(event) => onThinkingTimeChange(Number((event.currentTarget as HTMLInputElement).value))}
+        />
+        <p class="mono text-[11px] text-zinc-500">Maximum time for AI to think per move.</p>
+      </div>
+    {/if}
 
     <button
       class="mono w-full rounded border border-zinc-700 px-3 py-2 text-xs text-zinc-300 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
