@@ -26,7 +26,13 @@
   <div class="flex items-center justify-between">
     <div>
       <h3 class="mono text-sm uppercase tracking-wider text-zinc-200">EEG Monitoring</h3>
-      <p class="mt-1 text-xs text-zinc-500">Mock device stream for focus analysis workflow</p>
+      <p class="mt-1 text-xs text-zinc-500">
+        {#if eegState.deviceName}
+          Live stream from {eegState.deviceName}
+        {:else}
+          Mock device stream for focus analysis workflow
+        {/if}
+      </p>
     </div>
     <div class={`mono text-xs ${statusClass(eegState.status)}`}>{eegState.status}</div>
   </div>

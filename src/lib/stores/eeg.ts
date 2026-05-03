@@ -1,6 +1,13 @@
 import { writable } from 'svelte/store';
 import { mockEEGStream } from '$lib/services/mockEEG';
-import type { EEGConnectionStatus, EEGSample, EEGState } from '$lib/types/eeg';
+import { muse2EEGStream } from '$lib/services/muse2';
+import type {
+  EEGConnectionStatus,
+  EEGSample,
+  EEGState,
+  EEGProvider,
+  EEGStream
+} from '$lib/types/eeg';
 import { addLog } from '$lib/stores/logger';
 
 const MAX_SAMPLES = 240;
@@ -21,6 +28,12 @@ let samples: EEGSample[] = [];
 let unsubscribeStatus: (() => void) | null = null;
 let unsubscribeSamples: (() => void) | null = null;
 let sampleCounter = 0;
+let currentProvider: EEGProvider = 'mock';
+let currentStream: EEGStream = mockEEGStream;
+
+function getStream(provider: EEGProvider): EEGStream {
+  return provider === 'muse2' ? muse2EEGStream : mockEEGStream;
+}
 
 function cleanupListeners() {
   unsubscribeStatus?.();
@@ -29,13 +42,15 @@ function cleanupListeners() {
   unsubscribeSamples = null;
 }
 
-export async function startEEGMonitoring() {
+export async function startEEGMonitoring(provider: EEGProvider = 'mock') {
   stopEEGMonitoring(false);
+  currentProvider = provider;
+  currentStream = getStream(provider);
 
   eegState.set({ ...initialState, enabled: true, status: 'connecting' });
-  addLog('INFO', 'EEG', 'EEG monitoring enabled');
+  addLog('INFO', 'EEG', `EEG monitoring enabled (${provider === 'muse2' ? 'Muse 2' : 'Mock'})`);
 
-  unsubscribeStatus = mockEEGStream.onStatusChange((status: EEGConnectionStatus) => {
+  unsubscribeStatus = currentStream.onStatusChange((status: EEGConnectionStatus) => {
     eegState.update((state) => ({ ...state, status }));
 
     if (status === 'connected') {
@@ -47,7 +62,7 @@ export async function startEEGMonitoring() {
     }
   });
 
-  unsubscribeSamples = mockEEGStream.onSample((sample: EEGSample) => {
+  unsubscribeSamples = currentStream.onSample((sample: EEGSample) => {
     sampleCounter += 1;
     samples.push(sample);
 
@@ -66,15 +81,15 @@ export async function startEEGMonitoring() {
 
   try {
     addLog('INFO', 'EEG', 'Connecting to EEG device...');
-    await mockEEGStream.connect();
+    await currentStream.connect();
     eegState.update((state) => ({
       ...state,
       enabled: true,
-      deviceName: 'Muse S (Mock)',
-      sampleRate: 100,
+      deviceName: provider === 'muse2' ? 'Muse 2 (BLE)' : 'Muse S (Mock)',
+      sampleRate: provider === 'muse2' ? 256 : 100,
       error: null
     }));
-    addLog('INFO', 'EEG', 'EEG device connected: Muse S (Mock)');
+    addLog('INFO', 'EEG', `EEG device connected: ${provider === 'muse2' ? 'Muse 2 (BLE)' : 'Muse S (Mock)'}`);
   } catch (error) {
     eegState.update((state) => ({
       ...state,
@@ -87,7 +102,7 @@ export async function startEEGMonitoring() {
 
 export function stopEEGMonitoring(logStop = true) {
   cleanupListeners();
-  mockEEGStream.disconnect();
+  currentStream.disconnect();
   samples = [];
   sampleCounter = 0;
   eegState.set(initialState);
@@ -100,5 +115,5 @@ export function stopEEGMonitoring(logStop = true) {
 export async function reconnectEEG() {
   addLog('INFO', 'EEG', 'Manual EEG reconnect requested');
   stopEEGMonitoring(false);
-  await startEEGMonitoring();
+  await startEEGMonitoring(currentProvider);
 }

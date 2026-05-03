@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PlayerController } from '$lib/types/game';
+  import type { EEGProvider } from '$lib/types/eeg';
 
   export let player1: PlayerController = 'human';
   export let player2: PlayerController = 'dionysus';
@@ -18,6 +19,8 @@
   export let onPlayer1Change: (value: PlayerController) => void;
   export let onPlayer2Change: (value: PlayerController) => void;
   export let onEEGEnabledChange: (value: boolean) => void;
+  export let eegDeviceType: EEGProvider = 'mock';
+  export let onEEGDeviceTypeChange: (value: EEGProvider) => void;
   export let onBotAutoplayChange: (value: boolean) => void;
   export let onBotSpeedChange: (value: number) => void;
   export let onStepBot: () => void;
@@ -162,6 +165,25 @@
     />
     <span class="mono">Monitor brain activity (EEG)</span>
   </label>
+
+  <div class="space-y-3 rounded border border-zinc-800 bg-zinc-950 p-3">
+    <label class="mono text-xs uppercase tracking-wider text-zinc-400" for="eeg-device-type">
+      EEG source
+    </label>
+    <select
+      id="eeg-device-type"
+      class="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none ring-0"
+      bind:value={eegDeviceType}
+      disabled={disabled}
+      on:change={() => onEEGDeviceTypeChange(eegDeviceType)}
+    >
+      <option value="mock">Mock EEG stream</option>
+      <option value="muse2">Muse 2 (BLE)</option>
+    </select>
+    <p class="mono text-[11px] text-zinc-500">
+      Choose mock data for offline testing or Muse 2 when your headset is available. Web Bluetooth is required for Muse 2.
+    </p>
+  </div>
 
   <div class="space-y-2">
     <button

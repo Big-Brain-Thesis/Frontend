@@ -44,10 +44,12 @@
     reconnectEEG
   } from '$lib/stores/eeg';
   import type { PlayerController } from '$lib/types/game';
+  import type { EEGProvider } from '$lib/types/eeg';
 
   let player1: PlayerController = 'human';
   let player2: PlayerController = 'dionysus';
   let eegEnabled = false;
+  let eegDeviceType: EEGProvider = 'mock';
   let thinkingTimeMsP1 = 1000;
   let thinkingTimeMsP2 = 1000;
 
@@ -79,9 +81,17 @@
     eegEnabled = value;
 
     if (value) {
-      startEEGMonitoring();
+      startEEGMonitoring(eegDeviceType);
     } else {
       stopEEGMonitoring();
+    }
+  }
+
+  function handleEEGDeviceTypeChange(value: EEGProvider) {
+    eegDeviceType = value;
+
+    if (eegEnabled) {
+      startEEGMonitoring(value);
     }
   }
 
@@ -208,6 +218,7 @@
           {player1}
           {player2}
           {eegEnabled}
+          eegDeviceType={eegDeviceType}
           botAutoplay={$botAutoplay}
           botSpeedMs={$botSpeedMs}
           botThinking={$isBotThinking}
@@ -221,6 +232,7 @@
           onPlayer1Change={(value) => (player1 = value)}
           onPlayer2Change={(value) => (player2 = value)}
           onEEGEnabledChange={handleEEGEnabledChange}
+          onEEGDeviceTypeChange={handleEEGDeviceTypeChange}
           onBotAutoplayChange={setBotAutoplay}
           onBotSpeedChange={setBotSpeed}
           onStepBot={playBotMove}

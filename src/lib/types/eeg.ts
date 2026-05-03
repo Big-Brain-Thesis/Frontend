@@ -13,6 +13,15 @@ export type EEGConnectionStatus =
   | 'error'
   | 'reconnecting';
 
+export type EEGProvider = 'mock' | 'muse2';
+
+export interface EEGStream {
+  connect(): Promise<void>;
+  disconnect(): void;
+  onSample(callback: (sample: EEGSample) => void): () => void;
+  onStatusChange(callback: (status: EEGConnectionStatus) => void): () => void;
+}
+
 export type EEGState = {
   enabled: boolean;
   status: EEGConnectionStatus;
