@@ -17,7 +17,8 @@ type StartGameRequest = {
   player2: PlayerController;
   opponent: PlayerController;
   eegEnabled: boolean;
-  thinkingTimeMs?: number;
+  thinkingTimeMsP1?: number;
+  thinkingTimeMsP2?: number;
 };
 
 function getApiBase(): string {
@@ -99,7 +100,8 @@ export const apiService = {
     player1: PlayerController,
     player2: PlayerController,
     eegEnabled: boolean,
-    thinkingTimeMs?: number
+    thinkingTimeMsP1?: number,
+    thinkingTimeMsP2?: number
   ): Promise<GameState> {
     const body: StartGameRequest = {
       mode,
@@ -107,7 +109,8 @@ export const apiService = {
       player2,
       opponent: player2,
       eegEnabled,
-      ...(thinkingTimeMs !== undefined && { thinkingTimeMs })
+      ...(thinkingTimeMsP1 !== undefined && { thinkingTimeMsP1 }),
+      ...(thinkingTimeMsP2 !== undefined && { thinkingTimeMsP2 })
     };
 
     return request<GameState>('/api/game/start', {

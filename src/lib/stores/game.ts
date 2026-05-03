@@ -229,7 +229,8 @@ export async function startNewGame(
   player1: PlayerController,
   player2: PlayerController,
   eegEnabled: boolean,
-  thinkingTimeMs?: number
+  thinkingTimeMsP1?: number,
+  thinkingTimeMsP2?: number
 ) {
   clearBotTimer();
   replayState.set({
@@ -248,7 +249,14 @@ export async function startNewGame(
   );
 
   try {
-    const state = await apiService.startGame(mode, player1, player2, eegEnabled, thinkingTimeMs);
+    const state = await apiService.startGame(
+      mode,
+      player1,
+      player2,
+      eegEnabled,
+      thinkingTimeMsP1,
+      thinkingTimeMsP2
+    );
 
     setCommittedAndDisplayed(state);
     markApiOk();

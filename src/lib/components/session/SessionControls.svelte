@@ -10,7 +10,8 @@
   export let botSpeedMs = 400;
   export let canStepBot = false;
   export let botThinking = false;
-  export let thinkingTimeMs = 1000;
+  export let thinkingTimeMsP1 = 1000;
+  export let thinkingTimeMsP2 = 1000;
 
   export let onNewGame: () => void;
   export let onReset: () => void;
@@ -20,7 +21,8 @@
   export let onBotAutoplayChange: (value: boolean) => void;
   export let onBotSpeedChange: (value: number) => void;
   export let onStepBot: () => void;
-  export let onThinkingTimeChange: (value: number) => void;
+  export let onThinkingTime1Change: (value: number) => void;
+  export let onThinkingTime2Change: (value: number) => void;
 
   const controllers: Array<{ value: PlayerController; label: string }> = [
     { value: 'human', label: 'Human' },
@@ -49,6 +51,27 @@
           <option value={controller.value}>{controller.label}</option>
         {/each}
       </select>
+
+      {#if player1 === 'hermes'}
+        <div class="space-y-2 rounded border border-zinc-800 bg-zinc-950 p-3">
+          <div class="mono flex items-center justify-between text-xs text-zinc-400">
+            <label for="thinking-time-1">P1 thinking time</label>
+            <span>{(thinkingTimeMsP1 / 1000).toFixed(1)}s</span>
+          </div>
+          <input
+            id="thinking-time-1"
+            class="w-full"
+            type="range"
+            min="100"
+            max="10000"
+            step="100"
+            value={thinkingTimeMsP1}
+            disabled={disabled}
+            on:input={(event) => onThinkingTime1Change(Number((event.currentTarget as HTMLInputElement).value))}
+          />
+          <p class="mono text-[11px] text-zinc-500">Maximum time for Player 1 AI to think per move.</p>
+        </div>
+      {/if}
     </div>
 
     <div class="space-y-2">
@@ -67,6 +90,27 @@
           <option value={controller.value}>{controller.label}</option>
         {/each}
       </select>
+
+      {#if player2 === 'hermes'}
+        <div class="space-y-2 rounded border border-zinc-800 bg-zinc-950 p-3">
+          <div class="mono flex items-center justify-between text-xs text-zinc-400">
+            <label for="thinking-time-2">P2 thinking time</label>
+            <span>{(thinkingTimeMsP2 / 1000).toFixed(1)}s</span>
+          </div>
+          <input
+            id="thinking-time-2"
+            class="w-full"
+            type="range"
+            min="100"
+            max="10000"
+            step="100"
+            value={thinkingTimeMsP2}
+            disabled={disabled}
+            on:input={(event) => onThinkingTime2Change(Number((event.currentTarget as HTMLInputElement).value))}
+          />
+          <p class="mono text-[11px] text-zinc-500">Maximum time for Player 2 AI to think per move.</p>
+        </div>
+      {/if}
     </div>
   </div>
 
@@ -99,27 +143,6 @@
       />
       <p class="mono text-[11px] text-zinc-500">Arrow Up = faster, Arrow Down = slower.</p>
     </div>
-
-    {#if player2 === 'hermes'}
-      <div class="space-y-2">
-        <div class="mono flex items-center justify-between text-xs text-zinc-400">
-          <label for="thinking-time">AI thinking time</label>
-          <span>{(thinkingTimeMs / 1000).toFixed(1)}s</span>
-        </div>
-        <input
-          id="thinking-time"
-          class="w-full"
-          type="range"
-          min="100"
-          max="10000"
-          step="100"
-          value={thinkingTimeMs}
-          disabled={disabled}
-          on:input={(event) => onThinkingTimeChange(Number((event.currentTarget as HTMLInputElement).value))}
-        />
-        <p class="mono text-[11px] text-zinc-500">Maximum time for AI to think per move.</p>
-      </div>
-    {/if}
 
     <button
       class="mono w-full rounded border border-zinc-700 px-3 py-2 text-xs text-zinc-300 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"

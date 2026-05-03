@@ -48,7 +48,8 @@
   let player1: PlayerController = 'human';
   let player2: PlayerController = 'dionysus';
   let eegEnabled = false;
-  let thinkingTimeMs = 1000;
+  let thinkingTimeMsP1 = 1000;
+  let thinkingTimeMsP2 = 1000;
 
   function formatController(value: PlayerController | string): string {
     switch (value) {
@@ -64,8 +65,14 @@
   }
 
   function handleNewGame() {
-    const time = player2 === 'hermes' ? thinkingTimeMs : undefined;
-    startNewGame('2-player', player1, player2, eegEnabled, time);
+    startNewGame(
+      '2-player',
+      player1,
+      player2,
+      eegEnabled,
+      player1 === 'hermes' ? thinkingTimeMsP1 : undefined,
+      player2 === 'hermes' ? thinkingTimeMsP2 : undefined
+    );
   }
 
   function handleEEGEnabledChange(value: boolean) {
@@ -207,7 +214,8 @@
           {canStepBot}
           gameActive={$gameState !== null}
           disabled={$isLoading}
-          {thinkingTimeMs}
+          thinkingTimeMsP1={thinkingTimeMsP1}
+          thinkingTimeMsP2={thinkingTimeMsP2}
           onNewGame={handleNewGame}
           onReset={resetGame}
           onPlayer1Change={(value) => (player1 = value)}
@@ -216,7 +224,8 @@
           onBotAutoplayChange={setBotAutoplay}
           onBotSpeedChange={setBotSpeed}
           onStepBot={playBotMove}
-          onThinkingTimeChange={(value) => (thinkingTimeMs = value)}
+          onThinkingTime1Change={(value) => (thinkingTimeMsP1 = value)}
+          onThinkingTime2Change={(value) => (thinkingTimeMsP2 = value)}
         />
 
         <NotationInput disabled={boardDisabled} onSubmit={handleMove} />
