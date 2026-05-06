@@ -1,16 +1,16 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import AppHeader from '$lib/components/layout/AppHeader.svelte';
-  import QuoridorBoard from '$lib/components/board/QuoridorBoard.svelte';
-  import MoveHistory from '$lib/components/board/MoveHistory.svelte';
-  import SessionControls from '$lib/components/session/SessionControls.svelte';
-  import StatusPanel from '$lib/components/session/StatusPanel.svelte';
-  import AdvancedPanel from '$lib/components/session/AdvancedPanel.svelte';
-  import SessionArchive from '$lib/components/session/SessionArchive.svelte';
-  import WelcomeScreen from '$lib/components/session/WelcomeScreen.svelte';
-  import EEGPanel from '$lib/components/eeg/EEGPanel.svelte';
-  import DebugConsole from '$lib/components/logs/DebugConsole.svelte';
-  import NotationInput from '$lib/components/session/NotationInput.svelte';
+  import { onMount } from "svelte";
+  import AppHeader from "$lib/components/layout/AppHeader.svelte";
+  import QuoridorBoard from "$lib/components/board/QuoridorBoard.svelte";
+  import MoveHistory from "$lib/components/board/MoveHistory.svelte";
+  import SessionControls from "$lib/components/session/SessionControls.svelte";
+  import StatusPanel from "$lib/components/session/StatusPanel.svelte";
+  import AdvancedPanel from "$lib/components/session/AdvancedPanel.svelte";
+  import SessionArchive from "$lib/components/session/SessionArchive.svelte";
+  import WelcomeScreen from "$lib/components/session/WelcomeScreen.svelte";
+  import EEGPanel from "$lib/components/eeg/EEGPanel.svelte";
+  import DebugConsole from "$lib/components/logs/DebugConsole.svelte";
+  import NotationInput from "$lib/components/session/NotationInput.svelte";
   import {
     gameState,
     isLoading,
@@ -34,31 +34,34 @@
     refreshSavedGames,
     loadSavedGame,
     stepReplay,
-    exitReplay
-  } from '$lib/stores/game';
-  import { logs } from '$lib/stores/logger';
+    exitReplay,
+  } from "$lib/stores/game";
+  import { logs } from "$lib/stores/logger";
   import {
     eegState,
     startEEGMonitoring,
     stopEEGMonitoring,
-    reconnectEEG
-  } from '$lib/stores/eeg';
-  import type { PlayerController } from '$lib/types/game';
+    reconnectEEG,
+    museBackendConnected,
+    lastMusePing as lastMusePingMuse,
+    museError,
+  } from "$lib/stores/eeg";
+  import type { PlayerController } from "$lib/types/game";
 
-  let player1: PlayerController = 'human';
-  let player2: PlayerController = 'dionysus';
+  let player1: PlayerController = "human";
+  let player2: PlayerController = "dionysus";
   let eegEnabled = false;
   let thinkingTimeMsP1 = 1000;
   let thinkingTimeMsP2 = 1000;
 
   function formatController(value: PlayerController | string): string {
     switch (value) {
-      case 'human':
-        return 'Human';
-      case 'dionysus':
-        return 'Dionysus';
-      case 'hermes':
-        return 'Hermes';
+      case "human":
+        return "Human";
+      case "dionysus":
+        return "Dionysus";
+      case "hermes":
+        return "Hermes";
       default:
         return value;
     }
@@ -66,12 +69,12 @@
 
   function handleNewGame() {
     startNewGame(
-      '2-player',
+      "2-player",
       player1,
       player2,
       eegEnabled,
-      player1 === 'hermes' ? thinkingTimeMsP1 : undefined,
-      player2 === 'hermes' ? thinkingTimeMsP2 : undefined
+      player1 === "hermes" ? thinkingTimeMsP1 : undefined,
+      player2 === "hermes" ? thinkingTimeMsP2 : undefined,
     );
   }
 
@@ -93,27 +96,32 @@
     if (!(target instanceof HTMLElement)) return false;
 
     const tagName = target.tagName.toLowerCase();
-    return tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable;
+    return (
+      tagName === "input" ||
+      tagName === "textarea" ||
+      tagName === "select" ||
+      target.isContentEditable
+    );
   }
 
   function handleKeydown(event: KeyboardEvent) {
     if (isTypingTarget(event.target)) return;
 
     if ($replayState.active) {
-      if (event.key === 'ArrowLeft') {
+      if (event.key === "ArrowLeft") {
         event.preventDefault();
         stepReplay(-1);
-      } else if (event.key === 'ArrowRight') {
+      } else if (event.key === "ArrowRight") {
         event.preventDefault();
         stepReplay(1);
       }
       return;
     }
 
-    if (event.key === 'ArrowUp') {
+    if (event.key === "ArrowUp") {
       event.preventDefault();
       setBotSpeed($botSpeedMs - 100);
-    } else if (event.key === 'ArrowDown') {
+    } else if (event.key === "ArrowDown") {
       event.preventDefault();
       setBotSpeed($botSpeedMs + 100);
     }
@@ -138,7 +146,7 @@
     $gameState !== null &&
     !replayActive &&
     !$gameState.winner &&
-    $gameState.status === 'in-progress' &&
+    $gameState.status === "in-progress" &&
     currentPlayer !== null &&
     !currentPlayer.isAI;
   $: boardDisabled = !$gameState || !canControlCurrentTurn;
@@ -146,7 +154,7 @@
     $gameState !== null &&
     !replayActive &&
     !$gameState.winner &&
-    $gameState.status === 'in-progress' &&
+    $gameState.status === "in-progress" &&
     currentPlayer !== null &&
     currentPlayer.isAI;
   $: showBotWaiting = canStepBot && !$isBotThinking;
@@ -168,6 +176,9 @@
     apiConnected={$apiConnected}
     lastApiPing={$lastApiPing}
     apiError={$apiError}
+    museConnected={$museBackendConnected}
+    lastMusePing={$lastMusePingMuse}
+    museError={$museError}
   />
 
   <div class="mx-auto max-w-[1720px] px-4 py-6 sm:px-6">
@@ -177,21 +188,34 @@
           <WelcomeScreen />
         {/if}
 
-        <div class="min-h-[760px] overflow-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-4 sm:p-6">
-          <QuoridorBoard gameState={$gameState} disabled={boardDisabled} onMove={handleMove} />
+        <div
+          class="min-h-[760px] overflow-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-4 sm:p-6"
+        >
+          <QuoridorBoard
+            gameState={$gameState}
+            disabled={boardDisabled}
+            onMove={handleMove}
+          />
         </div>
 
         {#if replayActive}
-          <div class="rounded border border-amber-700/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          <div
+            class="rounded border border-amber-700/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+          >
             Replay mode. Use Arrow Left / Arrow Right to browse moves.
           </div>
         {:else if showBotWaiting}
-          <div class="rounded border border-amber-700/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            Waiting for Player {$gameState?.currentPlayer} bot
-            ({formatController($gameState?.difficulty ?? '')}) to move.
+          <div
+            class="rounded border border-amber-700/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+          >
+            Waiting for Player {$gameState?.currentPlayer} bot ({formatController(
+              $gameState?.difficulty ?? "",
+            )}) to move.
           </div>
         {:else if $isSubmitting}
-          <div class="rounded border border-blue-700/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
+          <div
+            class="rounded border border-blue-700/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-200"
+          >
             Move sent to backend. Board already updated optimistically.
           </div>
         {/if}
@@ -214,8 +238,8 @@
           {canStepBot}
           gameActive={$gameState !== null}
           disabled={$isLoading}
-          thinkingTimeMsP1={thinkingTimeMsP1}
-          thinkingTimeMsP2={thinkingTimeMsP2}
+          {thinkingTimeMsP1}
+          {thinkingTimeMsP2}
           onNewGame={handleNewGame}
           onReset={resetGame}
           onPlayer1Change={(value) => (player1 = value)}
@@ -244,7 +268,11 @@
 
         <StatusPanel
           gameState={$gameState}
-          apiStatus={{ connected: $apiConnected, lastPing: $lastApiPing, error: $apiError }}
+          apiStatus={{
+            connected: $apiConnected,
+            lastPing: $lastApiPing,
+            error: $apiError,
+          }}
           eegState={$eegState}
         />
 

@@ -1,20 +1,32 @@
 <script lang="ts">
-  import KeyboardHelp from '$lib/components/session/KeyboardHelp.svelte';
+  import KeyboardHelp from "$lib/components/session/KeyboardHelp.svelte";
 
   export let sessionId: string | null = null;
   export let apiConnected = false;
   export let lastApiPing: number | null = null;
   export let apiError: string | null = null;
 
+  export let museConnected = false;
+  export let lastMusePing: number | null = null;
+  export let museError: string | null = null;
+
   $: lastCheckLabel = lastApiPing
     ? new Date(lastApiPing).toLocaleTimeString()
-    : 'never';
+    : "never";
+
+  $: lastMuseCheckLabel = lastMusePing
+    ? new Date(lastMusePing).toLocaleTimeString()
+    : "never";
 </script>
 
 <header class="border-b border-zinc-800 bg-zinc-950 px-6 py-4">
-  <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+  <div
+    class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+  >
     <div class="flex items-center gap-3">
-      <div class="flex h-10 w-10 items-center justify-center rounded-lg border border-blue-900 bg-blue-950/40 text-lg">
+      <div
+        class="flex h-10 w-10 items-center justify-center rounded-lg border border-blue-900 bg-blue-950/40 text-lg"
+      >
         🧠
       </div>
       <div>
@@ -26,16 +38,18 @@
     <div class="mono flex flex-wrap items-center gap-4 text-xs">
       {#if sessionId}
         <div class="text-zinc-500">
-          Session: <span class="text-zinc-300">{sessionId.split('-').at(-1)}</span>
+          Session: <span class="text-zinc-300"
+            >{sessionId.split("-").at(-1)}</span
+          >
         </div>
       {/if}
 
       <div class="flex items-center gap-2">
         <span
-          class={`inline-block h-2 w-2 rounded-full ${apiConnected ? 'bg-green-400' : 'bg-red-400'}`}
+          class={`inline-block h-2 w-2 rounded-full ${apiConnected ? "bg-green-400" : "bg-red-400"}`}
         ></span>
-        <span class={apiConnected ? 'text-green-400' : 'text-red-400'}>
-          Backend {apiConnected ? 'Online' : 'Offline'}
+        <span class={apiConnected ? "text-green-400" : "text-red-400"}>
+          Backend {apiConnected ? "Online" : "Offline"}
         </span>
       </div>
 
@@ -48,7 +62,24 @@
           {apiError}
         </div>
       {/if}
+      <div class="flex items-center gap-2">
+        <span
+          class={`inline-block h-2 w-2 rounded-full ${museConnected ? "bg-green-400" : "bg-red-400"}`}
+        ></span>
+        <span class={museConnected ? "text-green-400" : "text-red-400"}>
+          Muse Backend {museConnected ? "Online" : "Offline"}
+        </span>
+      </div>
 
+      <div class="text-zinc-500">
+        Last muse check: <span class="text-zinc-300">{lastMuseCheckLabel}</span>
+      </div>
+
+      {#if museError && !museConnected}
+        <div class="max-w-[260px] truncate text-red-400" title={museError}>
+          {museError}
+        </div>
+      {/if}
       <KeyboardHelp />
     </div>
   </div>

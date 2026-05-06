@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
-import { mockEEGStream } from '$lib/services/mockEEG';
-import type { EEGConnectionStatus, EEGSample, EEGState } from '$lib/types/eeg';
 import { addLog } from '$lib/stores/logger';
+import type { EEGConnectionStatus, EEGSample, EEGState } from '$lib/types/eeg';
+import { connectEEGWebSocket, fetchEEGHistory } from '$lib/services/apiEEG';
 
 const MAX_SAMPLES = 240;
 
@@ -16,81 +16,116 @@ const initialState: EEGState = {
 };
 
 export const eegState = writable<EEGState>(initialState);
+export const museBackendConnected = writable(false);
+export const lastMusePing = writable<number | null>(null);
+export const museError = writable<string | null>(null);
 
 let samples: EEGSample[] = [];
-let unsubscribeStatus: (() => void) | null = null;
-let unsubscribeSamples: (() => void) | null = null;
+let websocketConnection: { close: () => void } | null = null;
 let sampleCounter = 0;
 
+function markMuseOk() {
+  museBackendConnected.set(true);
+  lastMusePing.set(Date.now());
+  museError.set(null);
+}
+
+function markMuseDown(message: string) {
+  museBackendConnected.set(false);
+  lastMusePing.set(Date.now());
+  museError.set(message);
+}
+
 function cleanupListeners() {
-  unsubscribeStatus?.();
-  unsubscribeSamples?.();
-  unsubscribeStatus = null;
-  unsubscribeSamples = null;
+  websocketConnection?.close();
+  websocketConnection = null;
 }
 
 export async function startEEGMonitoring() {
   stopEEGMonitoring(false);
 
   eegState.set({ ...initialState, enabled: true, status: 'connecting' });
+  museBackendConnected.set(false);
+  museError.set(null);
   addLog('INFO', 'EEG', 'EEG monitoring enabled');
 
-  unsubscribeStatus = mockEEGStream.onStatusChange((status: EEGConnectionStatus) => {
-    eegState.update((state) => ({ ...state, status }));
+  try {
+    const history = await fetchEEGHistory(MAX_SAMPLES);
+    markMuseOk();
+    samples = history.slice(-MAX_SAMPLES);
 
-    if (status === 'connected') {
-      addLog('INFO', 'EEG', 'EEG stream active');
-    } else if (status === 'reconnecting') {
-      addLog('WARN', 'EEG', 'EEG reconnecting...');
-    } else if (status === 'error') {
-      addLog('ERROR', 'EEG', 'EEG stream error');
-    }
-  });
-
-  unsubscribeSamples = mockEEGStream.onSample((sample: EEGSample) => {
-    sampleCounter += 1;
-    samples.push(sample);
-
-    if (samples.length > MAX_SAMPLES) {
-      samples = samples.slice(-MAX_SAMPLES);
-    }
-
-    if (sampleCounter % 2 === 0) {
+    if (samples.length > 0) {
       eegState.update((state) => ({
         ...state,
         samples: [...samples],
-        lastSampleTimestamp: sample.timestamp
+        lastSampleTimestamp: samples.at(-1)?.timestamp ?? state.lastSampleTimestamp
       }));
     }
-  });
-
-  try {
-    addLog('INFO', 'EEG', 'Connecting to EEG device...');
-    await mockEEGStream.connect();
-    eegState.update((state) => ({
-      ...state,
-      enabled: true,
-      deviceName: 'Muse S (Mock)',
-      sampleRate: 100,
-      error: null
-    }));
-    addLog('INFO', 'EEG', 'EEG device connected: Muse S (Mock)');
   } catch (error) {
-    eegState.update((state) => ({
-      ...state,
-      status: 'error',
-      error: String(error)
-    }));
-    addLog('ERROR', 'EEG', `EEG connection failed: ${String(error)}`);
+    const message = error instanceof Error ? error.message : String(error);
+    markMuseDown(message);
+    addLog('WARN', 'EEG', 'Could not load EEG history', {
+      message
+    });
   }
+
+  websocketConnection = connectEEGWebSocket(
+    (sample: EEGSample) => {
+      sampleCounter += 1;
+      samples.push(sample);
+
+      if (samples.length > MAX_SAMPLES) {
+        samples = samples.slice(-MAX_SAMPLES);
+      }
+
+      if (sampleCounter % 2 === 0) {
+        eegState.update((state) => ({
+          ...state,
+          samples: [...samples],
+          lastSampleTimestamp: sample.timestamp
+        }));
+      }
+    },
+    (status: EEGConnectionStatus) => {
+      eegState.update((state) => ({ ...state, status }));
+
+      if (status === 'connected') {
+        markMuseOk();
+        addLog('INFO', 'EEG', 'EEG stream active');
+      } else if (status === 'disconnected') {
+        markMuseDown('Muse backend disconnected');
+        addLog('WARN', 'EEG', 'EEG websocket disconnected');
+      } else if (status === 'error') {
+        markMuseDown('Muse websocket error');
+        addLog('ERROR', 'EEG', 'EEG stream error');
+      }
+    },
+    (error: string) => {
+      eegState.update((state) => ({
+        ...state,
+        status: 'error',
+        error
+      }));
+      markMuseDown(error);
+      addLog('ERROR', 'EEG', `EEG websocket error: ${error}`);
+    }
+  );
+
+  eegState.update((state) => ({
+    ...state,
+    enabled: true,
+    deviceName: 'Muse 2 API',
+    sampleRate: 8,
+    error: null
+  }));
 }
 
 export function stopEEGMonitoring(logStop = true) {
   cleanupListeners();
-  mockEEGStream.disconnect();
   samples = [];
   sampleCounter = 0;
   eegState.set(initialState);
+  museBackendConnected.set(false);
 
   if (logStop) {
     addLog('INFO', 'EEG', 'EEG monitoring stopped');
