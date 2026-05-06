@@ -23,7 +23,7 @@ function getEEGApiBase(): string {
   }
 
   if (typeof window === 'undefined') {
-    return 'http://127.0.0.1:8000';
+    return 'http://127.0.0.1:8000/';
   }
 
   return `http://${window.location.hostname}:8000`;
