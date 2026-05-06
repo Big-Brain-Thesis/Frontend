@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { muse2Supported } from '$lib/services/muse2';
   import type { PlayerController } from '$lib/types/game';
   import type { EEGProvider } from '$lib/types/eeg';
+
+  const canUseMuse2 = muse2Supported;
 
   export let player1: PlayerController = 'human';
   export let player2: PlayerController = 'dionysus';
@@ -178,11 +181,16 @@
       on:change={() => onEEGDeviceTypeChange(eegDeviceType)}
     >
       <option value="mock">Mock EEG stream</option>
-      <option value="muse2">Muse 2 (BLE)</option>
+      <option value="muse2" disabled={!canUseMuse2}>Muse 2 (BLE)</option>
     </select>
     <p class="mono text-[11px] text-zinc-500">
       Choose mock data for offline testing or Muse 2 when your headset is available. Web Bluetooth is required for Muse 2.
     </p>
+    {#if !canUseMuse2}
+      <div class="mono text-[11px] text-rose-400">
+        Muse 2 is unavailable in this browser. Use Chrome or Edge on localhost or HTTPS.
+      </div>
+    {/if}
   </div>
 
   <div class="space-y-2">

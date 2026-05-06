@@ -75,7 +75,7 @@ export class Muse2EEGStream implements EEGStream {
 
   async connect(): Promise<void> {
     if (!isWebBluetoothAvailable()) {
-      throw new Error('Web Bluetooth is not available in this browser. Use Chrome or Edge with https.');
+      throw new Error('Web Bluetooth is not available in this browser. Use Chrome or Edge on localhost or HTTPS.');
     }
 
     this.setStatus('connecting');
