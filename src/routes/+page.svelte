@@ -228,6 +228,10 @@
       </div>
 
       <div class="space-y-4 xl:sticky xl:top-6">
+        {#if eegEnabled}
+          <EEGPanel eegState={$eegState} onReconnect={reconnectEEG} />
+        {/if}
+
         <SessionControls
           {player1}
           {player2}
@@ -275,10 +279,6 @@
           }}
           eegState={$eegState}
         />
-
-        {#if eegEnabled}
-          <EEGPanel eegState={$eegState} onReconnect={reconnectEEG} />
-        {/if}
 
         <AdvancedPanel gameState={$gameState} />
       </div>

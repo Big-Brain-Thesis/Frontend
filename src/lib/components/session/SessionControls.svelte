@@ -29,20 +29,24 @@
     { value: 'dionysus', label: 'Dionysus bot' },
     { value: 'hermes', label: 'Hermes bot' }
   ];
+
+  $: hasSelectedBot = player1 !== 'human' || player2 !== 'human';
 </script>
 
-<div class="space-y-4 rounded border border-zinc-800 bg-zinc-900 p-4">
-  <h3 class="mono text-sm uppercase tracking-wider text-zinc-200">Session Controls</h3>
+<div class="space-y-3 rounded border border-zinc-800 bg-zinc-900 p-3">
+  <div class="flex items-center justify-between gap-3">
+    <h3 class="mono text-xs uppercase tracking-wider text-zinc-200">Session Controls</h3>
+    {#if gameActive}
+      <span class="mono rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-[10px] text-zinc-500">active</span>
+    {/if}
+  </div>
 
-  <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
-    <div class="space-y-2">
-      <label class="mono text-xs uppercase tracking-wider text-zinc-400" for="player1">
-        Player 1
-      </label>
-
+  <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+    <div class="space-y-1.5">
+      <label class="mono text-[11px] uppercase tracking-wider text-zinc-400" for="player1">Player 1</label>
       <select
         id="player1"
-        class="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none ring-0"
+        class="w-full rounded border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-200 outline-none ring-0"
         bind:value={player1}
         disabled={disabled}
         on:change={() => onPlayer1Change(player1)}
@@ -53,9 +57,9 @@
       </select>
 
       {#if player1 === 'hermes'}
-        <div class="space-y-2 rounded border border-zinc-800 bg-zinc-950 p-3">
-          <div class="mono flex items-center justify-between text-xs text-zinc-400">
-            <label for="thinking-time-1">P1 thinking time</label>
+        <div class="space-y-1.5 rounded border border-zinc-800 bg-zinc-950 p-2">
+          <div class="mono flex items-center justify-between text-[11px] text-zinc-400">
+            <label for="thinking-time-1">P1 think</label>
             <span>{(thinkingTimeMsP1 / 1000).toFixed(1)}s</span>
           </div>
           <input
@@ -69,19 +73,15 @@
             disabled={disabled}
             on:input={(event) => onThinkingTime1Change(Number((event.currentTarget as HTMLInputElement).value))}
           />
-          <p class="mono text-[11px] text-zinc-500">Maximum time for Player 1 AI to think per move.</p>
         </div>
       {/if}
     </div>
 
-    <div class="space-y-2">
-      <label class="mono text-xs uppercase tracking-wider text-zinc-400" for="player2">
-        Player 2
-      </label>
-
+    <div class="space-y-1.5">
+      <label class="mono text-[11px] uppercase tracking-wider text-zinc-400" for="player2">Player 2</label>
       <select
         id="player2"
-        class="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none ring-0"
+        class="w-full rounded border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-200 outline-none ring-0"
         bind:value={player2}
         disabled={disabled}
         on:change={() => onPlayer2Change(player2)}
@@ -92,9 +92,9 @@
       </select>
 
       {#if player2 === 'hermes'}
-        <div class="space-y-2 rounded border border-zinc-800 bg-zinc-950 p-3">
-          <div class="mono flex items-center justify-between text-xs text-zinc-400">
-            <label for="thinking-time-2">P2 thinking time</label>
+        <div class="space-y-1.5 rounded border border-zinc-800 bg-zinc-950 p-2">
+          <div class="mono flex items-center justify-between text-[11px] text-zinc-400">
+            <label for="thinking-time-2">P2 think</label>
             <span>{(thinkingTimeMsP2 / 1000).toFixed(1)}s</span>
           </div>
           <input
@@ -108,64 +108,66 @@
             disabled={disabled}
             on:input={(event) => onThinkingTime2Change(Number((event.currentTarget as HTMLInputElement).value))}
           />
-          <p class="mono text-[11px] text-zinc-500">Maximum time for Player 2 AI to think per move.</p>
         </div>
       {/if}
     </div>
   </div>
 
-  <div class="space-y-3 rounded border border-zinc-800 bg-zinc-950 p-3">
-    <label class="flex items-center gap-3 text-sm text-zinc-300">
-      <input
-        type="checkbox"
-        checked={botAutoplay}
-        disabled={disabled}
-        on:change={(event) => onBotAutoplayChange((event.currentTarget as HTMLInputElement).checked)}
-      />
-      <span class="mono">Autoplay bot turns</span>
-    </label>
+  {#if hasSelectedBot}
+    <div class="space-y-2 rounded border border-zinc-800 bg-zinc-950 p-2.5">
+      <div class="flex items-center justify-between gap-3">
+        <label class="flex items-center gap-2 text-xs text-zinc-300">
+          <input
+            type="checkbox"
+            checked={botAutoplay}
+            disabled={disabled}
+            on:change={(event) => onBotAutoplayChange((event.currentTarget as HTMLInputElement).checked)}
+          />
+          <span class="mono">Autoplay bots</span>
+        </label>
 
-    <div class="space-y-2">
-      <div class="mono flex items-center justify-between text-xs text-zinc-400">
-        <label for="bot-speed">Bot speed</label>
-        <span>{(botSpeedMs / 1000).toFixed(1)}s / move</span>
+        <button
+          class="mono rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={disabled || !canStepBot || botThinking}
+          on:click={onStepBot}
+        >
+          {botThinking ? 'Moving...' : 'Step'}
+        </button>
       </div>
-      <input
-        id="bot-speed"
-        class="w-full"
-        type="range"
-        min="100"
-        max="1000"
-        step="100"
-        value={botSpeedMs}
-        disabled={disabled}
-        on:input={(event) => onBotSpeedChange(Number((event.currentTarget as HTMLInputElement).value))}
-      />
-      <p class="mono text-[11px] text-zinc-500">Arrow Up = faster, Arrow Down = slower.</p>
+
+      <div class="space-y-1">
+        <div class="mono flex items-center justify-between text-[11px] text-zinc-400">
+          <label for="bot-speed">Bot speed</label>
+          <span>{(botSpeedMs / 1000).toFixed(1)}s</span>
+        </div>
+        <input
+          id="bot-speed"
+          class="w-full"
+          type="range"
+          min="100"
+          max="1000"
+          step="100"
+          value={botSpeedMs}
+          disabled={disabled}
+          on:input={(event) => onBotSpeedChange(Number((event.currentTarget as HTMLInputElement).value))}
+        />
+      </div>
     </div>
+  {/if}
 
-    <button
-      class="mono w-full rounded border border-zinc-700 px-3 py-2 text-xs text-zinc-300 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-      disabled={disabled || !canStepBot || botThinking}
-      on:click={onStepBot}
-    >
-      {botThinking ? 'Bot moving...' : 'Step bot once'}
-    </button>
-  </div>
-
-  <label class="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-300">
+  <label class="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-zinc-300">
     <input
       type="checkbox"
       checked={eegEnabled}
       disabled={disabled}
       on:change={(event) => onEEGEnabledChange((event.currentTarget as HTMLInputElement).checked)}
     />
-    <span class="mono">Monitor brain activity (EEG)</span>
+    <span class="mono">Monitor EEG</span>
   </label>
 
-  <div class="space-y-2">
+  <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
     <button
-      class="mono w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+      class="mono rounded bg-blue-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
       disabled={disabled}
       on:click={onNewGame}
     >
@@ -174,7 +176,7 @@
 
     {#if gameActive}
       <button
-        class="mono w-full rounded border border-zinc-700 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+        class="mono rounded border border-zinc-700 px-3 py-2 text-xs text-zinc-300 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
         disabled={disabled}
         on:click={onReset}
       >
