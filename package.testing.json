@@ -1,0 +1,18 @@
+{
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "latest",
+    "@testing-library/jest-dom": "latest",
+    "@testing-library/svelte": "latest",
+    "@testing-library/user-event": "latest",
+    "jsdom": "latest",
+    "vitest": "latest"
+  }
+}

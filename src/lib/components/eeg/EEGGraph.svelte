@@ -239,17 +239,18 @@
         </div>
       </div>
     </div>
-  {:else}
-    {#if loading}
+  {/if}
+
+  {#if visibleSamples.length > 0 && loading}
       <div class="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2">
         <div class="mono flex items-center gap-2 text-[11px] text-blue-300">
           <span class="h-2 w-2 animate-pulse rounded-full bg-blue-300"></span>
           Reconnecting. Existing graph data is kept visible.
         </div>
       </div>
-    {/if}
+  {/if}
 
-    {#if flatZero}
+  {#if flatZero}
       <div
         class="rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2"
       >
@@ -258,9 +259,9 @@
           graph is live; the reader is sending flat data.
         </p>
       </div>
-    {/if}
+  {/if}
 
-    <div class="space-y-3">
+  <div class="space-y-3">
       {#each graphViews as graph}
         <section class="rounded border border-zinc-800 bg-zinc-950 p-3">
           <div class="mb-2 flex items-start justify-between gap-3">
@@ -356,6 +357,5 @@
           </svg>
         </section>
       {/each}
-    </div>
-  {/if}
+  </div>
 </div>

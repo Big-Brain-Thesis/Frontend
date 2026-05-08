@@ -181,15 +181,15 @@
     museError={$museError}
   />
 
-  <div class="mx-auto max-w-[1720px] px-4 py-6 sm:px-6">
+  <div class="mx-auto max-w-430 px-4 py-6 sm:px-6">
     <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
-      <div class="space-y-6 xl:w-full xl:max-w-[980px] xl:justify-self-center">
+      <div class="space-y-6 xl:w-full xl:max-w-245 xl:justify-self-center">
         {#if !$gameState}
           <WelcomeScreen />
         {/if}
 
         <div
-          class="min-h-[760px] overflow-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-4 sm:p-6"
+          class="min-h-190 overflow-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-4 sm:p-6"
         >
           <QuoridorBoard
             gameState={$gameState}

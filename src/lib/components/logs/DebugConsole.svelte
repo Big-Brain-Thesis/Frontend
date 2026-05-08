@@ -239,7 +239,7 @@
               {latestError.message}
             </div>
             {#if latestError.data !== undefined}
-              <div class="mono mt-1 break-words text-[11px] text-zinc-400">
+              <div class="mono mt-1 wrap-wrap-break-word text-[11px] text-zinc-400">
                 {shortData(latestError.data)}
               </div>
             {/if}
@@ -255,7 +255,7 @@
               {latestWarning.message}
             </div>
             {#if latestWarning.data !== undefined}
-              <div class="mono mt-1 break-words text-[11px] text-zinc-400">
+              <div class="mono mt-1 wrap-break-words text-[11px] text-zinc-400">
                 {shortData(latestWarning.data)}
               </div>
             {/if}
@@ -299,14 +299,14 @@
                 <span class={`w-16 shrink-0 ${categoryClass(log.category)}`}
                   >{log.category}</span
                 >
-                <span class="min-w-0 flex-1 break-words text-zinc-200"
+                <span class="min-w-0 flex-1 wrap-break-words text-zinc-200"
                   >{log.message}</span
                 >
               </div>
 
               {#if log.data !== undefined && log.level !== "DEBUG"}
                 <div
-                  class="mono mt-1 break-words pl-[7.5rem] text-[11px] text-zinc-400"
+                  class="mono mt-1 wrap-break-words pl-30 text-[11px] text-zinc-400"
                 >
                   {shortData(log.data)}
                 </div>

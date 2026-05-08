@@ -13,16 +13,16 @@
   export let thinkingTimeMsP1 = 1000;
   export let thinkingTimeMsP2 = 1000;
 
-  export let onNewGame: () => void;
-  export let onReset: () => void;
-  export let onPlayer1Change: (value: PlayerController) => void;
-  export let onPlayer2Change: (value: PlayerController) => void;
-  export let onEEGEnabledChange: (value: boolean) => void;
-  export let onBotAutoplayChange: (value: boolean) => void;
-  export let onBotSpeedChange: (value: number) => void;
-  export let onStepBot: () => void;
-  export let onThinkingTime1Change: (value: number) => void;
-  export let onThinkingTime2Change: (value: number) => void;
+  export let onNewGame: () => void = () => {};
+  export let onReset: () => void = () => {};
+  export let onPlayer1Change: (value: PlayerController) => void = () => {};
+  export let onPlayer2Change: (value: PlayerController) => void = () => {};
+  export let onEEGEnabledChange: (value: boolean) => void = () => {};
+  export let onBotAutoplayChange: (value: boolean) => void = () => {};
+  export let onBotSpeedChange: (value: number) => void = () => {};
+  export let onStepBot: () => void = () => {};
+  export let onThinkingTime1Change: (value: number) => void = () => {};
+  export let onThinkingTime2Change: (value: number) => void = () => {};
 
   const controllers: Array<{ value: PlayerController; label: string }> = [
     { value: 'human', label: 'Human' },

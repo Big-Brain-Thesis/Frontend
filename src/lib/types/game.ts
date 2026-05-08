@@ -86,3 +86,58 @@ export type ReplayState = {
   states: GameState[];
   sourceId: string | null;
 };
+export type GameStateFactoryOverrides = Partial<GameState> & {
+  player1?: Partial<Player>;
+  player2?: Partial<Player>;
+  legalMove?: string;
+  legalWall?: string;
+};
+
+export function gameStateFactory(overrides: GameStateFactoryOverrides = {}): GameState {
+  const player1: Player = {
+    id: 1,
+    color: 'blue',
+    position: { col: 'e', row: 1 },
+    wallsRemaining: 10,
+    isAI: false,
+    ...(overrides.player1 ?? {})
+  };
+
+  const player2: Player = {
+    id: 2,
+    color: 'red',
+    position: { col: 'e', row: 9 },
+    wallsRemaining: 10,
+    isAI: false,
+    ...(overrides.player2 ?? {})
+  };
+
+  const legalMoves = overrides.legalMoves ?? (overrides.legalMove ? [overrides.legalMove] : ['e2']);
+  const legalWalls = overrides.legalWalls ?? (overrides.legalWall ? [overrides.legalWall] : ['a1h']);
+
+  const state: GameState = {
+    sessionId: 'test-session',
+    mode: '2-player',
+    difficulty: 'human',
+    status: 'in-progress',
+    currentPlayer: 1,
+    players: [player1, player2],
+    walls: [],
+    moveHistory: [],
+    winner: null,
+    legalMoves,
+    legalWalls,
+    boardSize: 9,
+    definedPosition: ' /  / e1 e9 / 10 10 / 1'
+  };
+
+  return {
+    ...state,
+    ...overrides,
+    players: overrides.players ?? state.players,
+    walls: overrides.walls ?? state.walls,
+    moveHistory: overrides.moveHistory ?? state.moveHistory,
+    legalMoves,
+    legalWalls
+  };
+}

@@ -162,9 +162,22 @@ async function parseError(response: Response): Promise<string> {
   }
 }
 
+function isBodyAlreadyRead(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /body.*(read|used|unusable)|already.*read/i.test(message);
+}
+
 async function parseJson<T>(response: Response): Promise<T> {
-  const text = await response.text();
-  return text ? (JSON.parse(text) as T) : (undefined as T);
+  if (response.status === 204 || response.status === 205) return undefined as T;
+
+  try {
+    if (response.bodyUsed) return {} as T;
+    const text = await response.text();
+    return text ? (JSON.parse(text) as T) : ({} as T);
+  } catch (error) {
+    if (isBodyAlreadyRead(error)) return {} as T;
+    throw error;
+  }
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {

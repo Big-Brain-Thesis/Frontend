@@ -6,7 +6,7 @@
   export let gameState: GameState | null = null;
   export let disabled = false;
   export let soundEnabled = true;
-  export let onMove: (notation: string) => void;
+  export let onMove: (notation: string) => void = () => {};
 
   const COLS = ["a", "b", "c", "d", "e", "f", "g", "h", "i"];
   const DISPLAY_ROWS = [9, 8, 7, 6, 5, 4, 3, 2, 1];
@@ -97,7 +97,9 @@
     if (!canPlaceWalls) return;
 
     const anchor = normalizeWallAnchor(col, row);
-    onMove(wallNotation(anchor.col, anchor.row, wallOrientation));
+    const notation = wallNotation(anchor.col, anchor.row, wallOrientation);
+    if (!isLegalWall(anchor.col, anchor.row, wallOrientation)) return;
+    onMove(notation);
   }
 
   function normalizeWallAnchor(col: string, row: number) {
@@ -126,7 +128,7 @@
     orientation: WallOrientation,
   ) {
     event.preventDefault();
-    if (!canPlaceWalls) return;
+    if (!canPlaceWalls || hasWall(col, row, orientation) || !isLegalWall(col, row, orientation)) return;
     onMove(wallNotation(col, row, orientation));
   }
 
@@ -224,7 +226,7 @@
 
 {#if !gameState}
   <div
-    class="flex h-[560px] items-center justify-center rounded border border-zinc-800 bg-zinc-900"
+    class="flex h-140 items-center justify-center rounded border border-zinc-800 bg-zinc-900"
   >
     <p class="mono text-sm text-zinc-500">No active game</p>
   </div>
@@ -255,7 +257,7 @@
         style={`width:${BOARD + LABEL * 2}px;height:${BOARD + LABEL * 2}px;`}
       >
         <div
-          class="pointer-events-none absolute left-[26px] top-0 flex"
+          class="pointer-events-none absolute left-6.5 top-0 flex"
           style={`width:${BOARD}px;`}
         >
           {#each COLS as col, colIndex}
@@ -269,7 +271,7 @@
         </div>
 
         <div
-          class="pointer-events-none absolute left-0 top-[26px] flex flex-col"
+          class="pointer-events-none absolute left-0 top-6.5 flex flex-col"
           style={`height:${BOARD}px;`}
         >
           {#each DISPLAY_ROWS as row, rowIndex}
@@ -283,7 +285,7 @@
         </div>
 
         <div
-          class="absolute left-[26px] top-[26px] rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 shadow-2xl shadow-black/30"
+          class="absolute left-6.5 top-6.5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 shadow-2xl shadow-black/30"
         >
           <div
             class="relative rounded-xl border border-zinc-800 bg-zinc-900"
@@ -300,6 +302,11 @@
                   style={`left:${squareLeft(colIndex)}px;top:${squareTop(rowIndex)}px;width:${SQUARE}px;height:${SQUARE}px;`}
                   {disabled}
                   title={`Left click: move to ${squareKey}. Right click: place ${wallOrientation} wall.`}
+                  aria-label={player
+                    ? `Square ${squareKey}: Player ${player.id}`
+                    : legal && !disabled
+                      ? `Move to ${squareKey}`
+                      : `Square ${squareKey}`}
                   on:mouseenter={() => (hoveredSquare = squareKey)}
                   on:mouseleave={() => (hoveredSquare = null)}
                   on:click={() => handleSquareClick(col, row)}
@@ -320,13 +327,13 @@
 
                   {#if isBlueGoalRow(row)}
                     <div
-                      class="pointer-events-none absolute inset-x-1 top-1 h-[3px] rounded-full bg-blue-400/70"
+                      class="pointer-events-none absolute inset-x-1 top-1 h-0.75 rounded-full bg-blue-400/70"
                     ></div>
                   {/if}
 
                   {#if isRedGoalRow(row)}
                     <div
-                      class="pointer-events-none absolute inset-x-1 bottom-1 h-[3px] rounded-full bg-red-400/70"
+                      class="pointer-events-none absolute inset-x-1 bottom-1 h-0.75 rounded-full bg-red-400/70"
                     ></div>
                   {/if}
 
@@ -360,6 +367,7 @@
                   class={`wall-slot absolute rounded transition-colors duration-100 ${hasHorizontalWall ? `bg-amber-400 shadow-lg shadow-amber-500/20 ${latestPlacedWallKey === horizontalKey ? "wall-pop" : ""}` : "bg-transparent"} ${!hasHorizontalWall && canPlaceWalls && horizontalLegal ? "hover:bg-amber-500/30" : ""} ${hoveredWall === horizontalKey ? "bg-amber-400/50 ring-2 ring-amber-300" : ""}`}
                   style={horizontalWallStyle(colIndex, rowIndex)}
                   title={`Right click: place horizontal wall at ${horizontalKey}`}
+                  aria-label={`Place horizontal wall at ${horizontalKey}`}
                   disabled={disabled ||
                     hasHorizontalWall ||
                     hasVerticalWall ||
@@ -375,6 +383,7 @@
                   class={`wall-slot absolute rounded transition-colors duration-100 ${hasVerticalWall ? `bg-amber-400 shadow-lg shadow-amber-500/20 ${latestPlacedWallKey === verticalKey ? "wall-pop" : ""}` : "bg-transparent"} ${!hasVerticalWall && canPlaceWalls && verticalLegal ? "hover:bg-amber-500/30" : ""} ${hoveredWall === verticalKey ? "bg-amber-400/50 ring-2 ring-amber-300" : ""}`}
                   style={verticalWallStyle(colIndex, rowIndex)}
                   title={`Right click: place vertical wall at ${verticalKey}`}
+                  aria-label={`Place vertical wall at ${verticalKey}`}
                   disabled={disabled ||
                     hasVerticalWall ||
                     hasHorizontalWall ||
@@ -406,11 +415,11 @@
       </div>
     {/key}
 
-    <div class="grid w-full max-w-[740px] gap-2 md:grid-cols-3">
+    <div class="grid w-full max-w-185 gap-2 md:grid-cols-3">
       <div
         class="mono rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-400"
       >
-        Turn: Player {gameState.currentPlayer}
+        Current turn: Player {gameState.currentPlayer}
       </div>
 
       <div

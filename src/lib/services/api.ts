@@ -3,8 +3,11 @@ import type {
   GameMode,
   GameState,
   LoadedGameResponse,
+  Move,
+  Player,
   PlayerController,
-  SavedGameSummary
+  SavedGameSummary,
+  Wall
 } from '$lib/types/game';
 
 type ApiErrorResponse = {
@@ -21,6 +24,8 @@ type StartGameRequest = {
   thinkingTimeMsP1?: number;
   thinkingTimeMsP2?: number;
 };
+
+type UnknownRecord = Record<string, unknown>;
 
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_RETRIES = 2;
@@ -113,10 +118,137 @@ async function parseError(response: Response): Promise<string> {
   }
 }
 
+function isBodyAlreadyRead(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /body.*(read|used|unusable)|already.*read/i.test(message);
+}
+
 async function parseJson<T>(response: Response): Promise<T> {
-  const text = await response.text();
-  if (!text) return undefined as T;
-  return JSON.parse(text) as T;
+  if (response.status === 204 || response.status === 205) return undefined as T;
+
+  try {
+    if (response.bodyUsed) return {} as T;
+    const text = await response.text();
+    if (!text) return {} as T;
+    return JSON.parse(text) as T;
+  } catch (error) {
+    if (isBodyAlreadyRead(error)) return {} as T;
+    throw error;
+  }
+}
+
+function asRecord(value: unknown): UnknownRecord {
+  return value && typeof value === 'object' ? (value as UnknownRecord) : {};
+}
+
+function stringValue(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function numberValue(value: unknown, fallback = 0): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function booleanValue(value: unknown, fallback = false): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function arrayValue<T>(value: unknown, mapItem: (item: unknown, index: number) => T): T[] {
+  return Array.isArray(value) ? value.map(mapItem) : [];
+}
+
+function normalizePosition(value: unknown, fallbackCol = 'e', fallbackRow = 1) {
+  const source = asRecord(value);
+  return {
+    col: stringValue(source.col, fallbackCol),
+    row: numberValue(source.row, fallbackRow)
+  };
+}
+
+function normalizePlayer(value: unknown, index: number): Player {
+  const source = asRecord(value);
+  const id = numberValue(source.id, index + 1);
+
+  return {
+    id,
+    color: stringValue(source.color, id === 1 ? 'blue' : 'red') as Player['color'],
+    position: normalizePosition(source.position, 'e', id === 1 ? 1 : 9),
+    wallsRemaining: numberValue(source.wallsRemaining ?? source.walls_remaining, 10),
+    isAI: booleanValue(source.isAI ?? source.is_ai, false)
+  };
+}
+
+function normalizeWall(value: unknown): Wall {
+  const source = asRecord(value);
+  return {
+    position: normalizePosition(source.position, 'a', 1),
+    orientation: (source.orientation === 'v' ? 'v' : 'h') as Wall['orientation']
+  };
+}
+
+function normalizeMove(value: unknown): Move {
+  const source = asRecord(value);
+  const notation = stringValue(source.notation ?? source.move, '');
+  const type = source.type === 'wall' || notation.endsWith('h') || notation.endsWith('v') ? 'wall' : 'pawn';
+
+  return {
+    notation,
+    type,
+    player: numberValue(source.player, 1),
+    timestamp: numberValue(source.timestamp ?? source.created_at, Date.now())
+  };
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)) : [];
+}
+
+function normalizeGameState(value: unknown): GameState {
+  const source = asRecord(value);
+  const players = arrayValue(source.players, normalizePlayer);
+  const currentPlayer = numberValue(source.currentPlayer ?? source.current_player, 1);
+
+  return {
+    sessionId: stringValue(source.sessionId ?? source.session_id, 'local-session'),
+    mode: (source.mode === '2-player' ? source.mode : '2-player') as GameMode,
+    difficulty: stringValue(source.difficulty ?? source.opponent, ''),
+    status: stringValue(source.status, 'in-progress') as GameState['status'],
+    currentPlayer,
+    players: players.length > 0 ? players : [normalizePlayer(undefined, 0), normalizePlayer(undefined, 1)],
+    walls: arrayValue(source.walls, normalizeWall),
+    moveHistory: arrayValue(source.moveHistory ?? source.move_history, normalizeMove),
+    winner: source.winner === null || source.winner === undefined ? null : numberValue(source.winner, 0),
+    legalMoves: normalizeStringArray(source.legalMoves ?? source.legal_moves),
+    legalWalls: normalizeStringArray(source.legalWalls ?? source.legal_walls),
+    boardSize: numberValue(source.boardSize ?? source.board_size, 9),
+    evaluation: source.evaluation === undefined ? undefined : numberValue(source.evaluation),
+    definedPosition: source.definedPosition === undefined && source.defined_position === undefined
+      ? undefined
+      : stringValue(source.definedPosition ?? source.defined_position)
+  };
+}
+
+function normalizeSavedGameSummary(value: unknown): SavedGameSummary {
+  const source = asRecord(value);
+
+  return {
+    id: stringValue(source.id),
+    sessionId: stringValue(source.sessionId ?? source.session_id),
+    savedAt: numberValue(source.savedAt ?? source.saved_at, Date.now()),
+    moveCount: numberValue(source.moveCount ?? source.move_count, 0),
+    winner: source.winner === null || source.winner === undefined ? null : numberValue(source.winner, 0),
+    playerProfiles: normalizeStringArray(source.playerProfiles ?? source.player_profiles) as PlayerController[]
+  };
+}
+
+function normalizeLoadedGameResponse(value: unknown): LoadedGameResponse {
+  const source = asRecord(value);
+  return {
+    summary: normalizeSavedGameSummary(source.summary),
+    session: normalizeGameState(source.session),
+    replay: arrayValue(source.replay, normalizeGameState)
+  };
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -202,7 +334,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const apiService = {
-  startGame(
+  async startGame(
     mode: GameMode,
     player1: PlayerController,
     player2: PlayerController,
@@ -220,51 +352,52 @@ export const apiService = {
       ...(thinkingTimeMsP2 !== undefined && { thinkingTimeMsP2 })
     };
 
-    return request<GameState>('/api/game/start', {
+    return normalizeGameState(await request<unknown>('/api/game/start', {
       method: 'POST',
       body: JSON.stringify(body)
-    });
+    }));
   },
 
-  getGameState(sessionId: string): Promise<GameState> {
-    return request<GameState>(`/api/game/${encodeURIComponent(sessionId)}`);
+  async getGameState(sessionId: string): Promise<GameState> {
+    return normalizeGameState(await request<unknown>(`/api/game/${encodeURIComponent(sessionId)}`));
   },
 
-  submitMove(sessionId: string, moveNotation: string): Promise<GameState> {
-    return request<GameState>(`/api/game/${encodeURIComponent(sessionId)}/move`, {
+  async submitMove(sessionId: string, moveNotation: string): Promise<GameState> {
+    return normalizeGameState(await request<unknown>(`/api/game/${encodeURIComponent(sessionId)}/move`, {
       method: 'POST',
       body: JSON.stringify({
         move: moveNotation.toLowerCase().trim()
       })
-    });
+    }));
   },
 
-  playBotMove(sessionId: string): Promise<GameState> {
-    return request<GameState>(`/api/game/${encodeURIComponent(sessionId)}/bot-move`, {
+  async playBotMove(sessionId: string): Promise<GameState> {
+    return normalizeGameState(await request<unknown>(`/api/game/${encodeURIComponent(sessionId)}/bot-move`, {
       method: 'POST'
-    });
+    }));
   },
 
-  resetGame(sessionId: string): Promise<GameState> {
-    return request<GameState>(`/api/game/${encodeURIComponent(sessionId)}/reset`, {
+  async resetGame(sessionId: string): Promise<GameState> {
+    return normalizeGameState(await request<unknown>(`/api/game/${encodeURIComponent(sessionId)}/reset`, {
       method: 'POST'
-    });
+    }));
   },
 
-  saveGame(sessionId: string): Promise<SavedGameSummary> {
-    return request<SavedGameSummary>(`/api/game/${encodeURIComponent(sessionId)}/save`, {
+  async saveGame(sessionId: string): Promise<SavedGameSummary> {
+    return normalizeSavedGameSummary(await request<unknown>(`/api/game/${encodeURIComponent(sessionId)}/save`, {
       method: 'POST'
-    });
+    }));
   },
 
-  listSavedGames(): Promise<SavedGameSummary[]> {
-    return request<SavedGameSummary[]>('/api/saves');
+  async listSavedGames(): Promise<SavedGameSummary[]> {
+    const data = await request<unknown>('/api/saves');
+    return Array.isArray(data) ? data.map(normalizeSavedGameSummary) : [];
   },
 
-  loadSavedGame(saveId: string): Promise<LoadedGameResponse> {
-    return request<LoadedGameResponse>(`/api/saves/${encodeURIComponent(saveId)}/load`, {
+  async loadSavedGame(saveId: string): Promise<LoadedGameResponse> {
+    return normalizeLoadedGameResponse(await request<unknown>(`/api/saves/${encodeURIComponent(saveId)}/load`, {
       method: 'POST'
-    });
+    }));
   },
 
   ping(): Promise<{ ok: boolean }> {
