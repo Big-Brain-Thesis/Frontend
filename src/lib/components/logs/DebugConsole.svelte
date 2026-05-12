@@ -27,10 +27,10 @@
   const levels: LevelFilter[] = ["ALL", "ERROR", "WARN", "INFO", "DEBUG"];
 
   $: usefulLogs = logs.filter((log) => !isHealthLog(log));
+
   $: visibleLogs = usefulLogs.filter((log) => {
     if (!showDebug && log.level === "DEBUG") return false;
-    if (filterCategory !== "ALL" && log.category !== filterCategory)
-      return false;
+    if (filterCategory !== "ALL" && log.category !== filterCategory) return false;
     if (filterLevel !== "ALL" && log.level !== filterLevel) return false;
     return true;
   });
@@ -40,6 +40,7 @@
   $: eegLogs = usefulLogs.filter((log) => log.category === "EEG");
   $: apiLogs = usefulLogs.filter((log) => log.category === "API");
   $: moveLogs = usefulLogs.filter((log) => log.category === "MOVE");
+
   $: latestError = errors.at(-1);
   $: latestWarning = warnings.at(-1);
   $: latestMove = moveLogs.at(-1);
@@ -55,14 +56,24 @@
   function isHealthLog(log: LogEntry): boolean {
     const text = `${log.message} ${formatData(log.data)}`.toLowerCase();
 
-    return (
-      text.includes("/api/health") ||
-      text.includes("api/health") ||
-      text.includes("get health") ||
-      text.includes("health poll") ||
-      text.includes("muse health") ||
-      text.includes("ping")
-    );
+    if (log.level === "ERROR" || log.level === "WARN") {
+      return false;
+    }
+
+    if (log.category === "API") {
+      return (
+        text.includes("/api/health") ||
+        text.includes("api/health") ||
+        text.includes("get health") ||
+        text.includes("health poll")
+      );
+    }
+
+    if (log.category === "EEG") {
+      return text.includes("muse health");
+    }
+
+    return false;
   }
 
   function formatTimestamp(timestamp: number): string {
@@ -93,7 +104,7 @@
     return text.length > 160 ? `${text.slice(0, 160)}…` : text;
   }
 
-  function levelClass(level: LogEntry["level"]) {
+  function levelClass(level: LogEntry["level"]): string {
     switch (level) {
       case "ERROR":
         return "border-red-500/40 bg-red-500/10 text-red-300";
@@ -106,7 +117,7 @@
     }
   }
 
-  function categoryClass(category: LogCategory) {
+  function categoryClass(category: LogCategory): string {
     switch (category) {
       case "GAME":
         return "text-blue-300";
@@ -123,7 +134,7 @@
     }
   }
 
-  function severityDot(level: LogEntry["level"]) {
+  function severityDot(level: LogEntry["level"]): string {
     switch (level) {
       case "ERROR":
         return "bg-red-400";
@@ -143,9 +154,10 @@
       <h3 class="mono text-sm uppercase tracking-wider text-zinc-200">
         System Console
       </h3>
+
       <p class="mono mt-1 text-xs text-zinc-500">
-        {visibleLogs.length} shown · {usefulLogs.length} useful · {logs.length -
-          usefulLogs.length} health hidden
+        {visibleLogs.length} shown · {usefulLogs.length} useful · {logs.length - usefulLogs.length}
+        health hidden
       </p>
     </div>
 
@@ -153,6 +165,7 @@
       <select
         class="mono rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-300"
         bind:value={filterCategory}
+        aria-label="Filter log category"
       >
         {#each categories as category}
           <option value={category}>{category}</option>
@@ -162,6 +175,7 @@
       <select
         class="mono rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-300"
         bind:value={filterLevel}
+        aria-label="Filter log level"
       >
         {#each levels as level}
           <option value={level}>{level}</option>
@@ -185,6 +199,7 @@
         type="button"
         class="rounded border border-zinc-700 px-2 py-1 text-zinc-400 hover:text-zinc-200"
         on:click={() => (isCollapsed = !isCollapsed)}
+        aria-label={isCollapsed ? "Expand system console" : "Collapse system console"}
       >
         {isCollapsed ? "▾" : "▴"}
       </button>
@@ -192,9 +207,7 @@
   </div>
 
   {#if !isCollapsed}
-    <div
-      class="grid grid-cols-2 gap-2 border-b border-zinc-800 p-3 md:grid-cols-4"
-    >
+    <div class="grid grid-cols-2 gap-2 border-b border-zinc-800 p-3 md:grid-cols-4">
       <div class="rounded border border-zinc-800 bg-zinc-900 p-2">
         <div class="mono text-[10px] uppercase tracking-wider text-zinc-500">
           Errors
@@ -235,27 +248,29 @@
             <div class="mono text-[10px] uppercase tracking-wider text-red-300">
               Latest Error
             </div>
+
             <div class="mono mt-1 text-xs text-zinc-200">
               {latestError.message}
             </div>
+
             {#if latestError.data !== undefined}
-              <div class="mono mt-1 wrap-wrap-break-word text-[11px] text-zinc-400">
+              <div class="mono mt-1 break-words text-[11px] text-zinc-400">
                 {shortData(latestError.data)}
               </div>
             {/if}
           </div>
         {:else if latestWarning}
           <div class="rounded border border-yellow-500/30 bg-yellow-500/10 p-2">
-            <div
-              class="mono text-[10px] uppercase tracking-wider text-yellow-300"
-            >
+            <div class="mono text-[10px] uppercase tracking-wider text-yellow-300">
               Latest Warning
             </div>
+
             <div class="mono mt-1 text-xs text-zinc-200">
               {latestWarning.message}
             </div>
+
             {#if latestWarning.data !== undefined}
-              <div class="mono mt-1 wrap-break-words text-[11px] text-zinc-400">
+              <div class="mono mt-1 break-words text-[11px] text-zinc-400">
                 {shortData(latestWarning.data)}
               </div>
             {/if}
@@ -264,11 +279,10 @@
 
         {#if latestAPI}
           <div class="rounded border border-zinc-800 bg-zinc-900 p-2">
-            <div
-              class="mono text-[10px] uppercase tracking-wider text-zinc-500"
-            >
+            <div class="mono text-[10px] uppercase tracking-wider text-zinc-500">
               Latest API Event
             </div>
+
             <div class="mono mt-1 text-xs text-zinc-300">
               {latestAPI.message}
             </div>
@@ -292,31 +306,32 @@
                 <span
                   class={`mt-1 h-2 w-2 shrink-0 rounded-full ${severityDot(log.level)}`}
                 ></span>
-                <span class="shrink-0 text-zinc-500"
-                  >{formatTimestamp(log.timestamp)}</span
-                >
+
+                <span class="shrink-0 text-zinc-500">
+                  {formatTimestamp(log.timestamp)}
+                </span>
+
                 <span class="w-12 shrink-0">{log.level}</span>
-                <span class={`w-16 shrink-0 ${categoryClass(log.category)}`}
-                  >{log.category}</span
-                >
-                <span class="min-w-0 flex-1 wrap-break-words text-zinc-200"
-                  >{log.message}</span
-                >
+
+                <span class={`w-16 shrink-0 ${categoryClass(log.category)}`}>
+                  {log.category}
+                </span>
+
+                <span class="min-w-0 flex-1 break-words text-zinc-200">
+                  {log.message}
+                </span>
               </div>
 
               {#if log.data !== undefined && log.level !== "DEBUG"}
-                <div
-                  class="mono mt-1 wrap-break-words pl-30 text-[11px] text-zinc-400"
-                >
+                <div class="mono mt-1 break-words pl-28 text-[11px] text-zinc-400">
                   {shortData(log.data)}
                 </div>
               {/if}
 
               {#if log.data !== undefined && log.level === "DEBUG" && showDebug}
                 <pre
-                  class="mono mt-2 overflow-x-auto rounded border border-zinc-800 bg-zinc-950 p-2 text-[11px] text-zinc-400">{formatData(
-                    log.data,
-                  )}</pre>
+                  class="mono mt-2 overflow-x-auto rounded border border-zinc-800 bg-zinc-950 p-2 text-[11px] text-zinc-400"
+                >{formatData(log.data)}</pre>
               {/if}
             </div>
           {/each}

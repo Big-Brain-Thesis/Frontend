@@ -50,7 +50,9 @@ type MuseHealthResponse = {
     frames?: number;
     clients?: number;
     last_frame_at?: number | null;
+    last_nonzero_frame_at?: number | null;
     seconds_since_last_frame?: number | null;
+    last_abs_max?: number;
   };
 };
 
@@ -86,7 +88,8 @@ function getEEGApiBase(): string {
   const explicit = env('PUBLIC_EEG_API_BASE');
   if (explicit) return cleanBase(explicit);
   if (typeof window === 'undefined') return 'http://127.0.0.1:8000';
-  return `http://${window.location.hostname || '127.0.0.1'}:8000`;
+  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+  return `${protocol}//${window.location.hostname || '127.0.0.1'}:8000`;
 }
 
 function getWebSocketUrl(): string {

@@ -23,6 +23,15 @@ const initialState: EEGState = {
 };
 
 export const eegState = writable<EEGState>(initialState);
+
+/**
+ * Muse backend availability.
+ *
+ * This means the Python Muse FastAPI backend responded to:
+ * GET /api/health
+ *
+ * It does not mean that a physical Muse device is connected.
+ */
 export const museBackendConnected = writable(false);
 export const lastMusePing = writable<number | null>(null);
 export const museError = writable<string | null>(null);
@@ -78,18 +87,59 @@ function appendSample(sample: EEGSample) {
   publish(sample, { status: 'connected', error: null });
 }
 
+/**
+ * Public backend health check used by the app header.
+ *
+ * This checks only whether the Muse backend HTTP API is reachable.
+ * It deliberately does not require the Muse reader process, WebSocket,
+ * or physical Muse device to be connected.
+ */
+export async function refreshMuseHealth() {
+  try {
+    const health = await getMuseHealth();
+
+    if (health.ok) {
+      markBackendOk();
+      return true;
+    }
+
+    markBackendProblem('Muse backend health check returned not ok');
+    return false;
+  } catch (error) {
+    markBackendProblem(message(error));
+    return false;
+  }
+}
+
+/**
+ * Monitoring health polling.
+ *
+ * This keeps the backend indicator fresh while EEG monitoring is active.
+ * It also preserves stream state separately from backend state.
+ */
 async function pollHealth(token: number) {
   try {
     const health = await getMuseHealth();
     if (token !== startToken) return;
-    markBackendOk();
+
+    if (health.ok) {
+      markBackendOk();
+    } else {
+      markBackendProblem('Muse backend health check returned not ok');
+    }
+
     const processError = health.process?.error;
     if (processError) museError.set(processError);
   } catch (error) {
     if (token !== startToken) return;
-    // Do not mark the stream down if live websocket samples are still arriving.
+
+    markBackendProblem(message(error));
+
     if (Date.now() - lastLiveSampleAt > HEALTH_POLL_MS * 2) {
-      markBackendProblem(message(error));
+      eegState.update((state) => ({
+        ...state,
+        error: `Muse backend is not reachable: ${message(error)}`
+      }));
     }
   }
 }
@@ -100,8 +150,11 @@ function startHealthPolling(token: number) {
   healthTimer = setInterval(() => void pollHealth(token), HEALTH_POLL_MS);
 }
 
-export async function startEEGMonitoring(options: { simulate?: boolean; address?: string; backend?: string } = {}) {
+export async function startEEGMonitoring(
+  options: { simulate?: boolean; address?: string; backend?: string } = {}
+) {
   stopEEGMonitoring(false);
+
   const token = startToken;
   buffer = [];
   lastLiveSampleAt = 0;
@@ -113,34 +166,46 @@ export async function startEEGMonitoring(options: { simulate?: boolean; address?
     deviceName: 'Muse 2 API'
   });
 
-  museBackendConnected.set(false);
   museError.set(null);
   addLog('INFO', 'EEG', 'EEG monitoring starting');
 
   try {
     const response = await startMuseReader(options);
     if (token !== startToken) return;
+
     markBackendOk();
     startHealthPolling(token);
     addLog('INFO', 'EEG', 'Muse reader start requested', response);
   } catch (error) {
     if (token !== startToken) return;
+
     const text = message(error);
     markBackendProblem(text);
-    eegState.update((state) => ({ ...state, status: 'error', error: `Muse API is not reachable: ${text}` }));
+
+    eegState.update((state) => ({
+      ...state,
+      status: 'error',
+      error: `Muse API is not reachable: ${text}`
+    }));
+
     return;
   }
 
   try {
     const history = await fetchEEGHistory(MAX_SAMPLES);
     if (token !== startToken) return;
+
     buffer = history.slice(-MAX_SAMPLES);
     if (buffer.length) publish(buffer[buffer.length - 1]);
+
     markBackendOk();
   } catch (error) {
     if (token !== startToken) return;
-    addLog('WARN', 'EEG', 'Could not load EEG history', { message: message(error) });
-    // History failure must not block the live websocket stream.
+
+    addLog('WARN', 'EEG', 'Could not load EEG history', {
+      message: message(error)
+    });
+
     buffer = [];
   }
 
@@ -149,26 +214,35 @@ export async function startEEGMonitoring(options: { simulate?: boolean; address?
   connection = connectEEGWebSocket(
     (sample) => {
       if (token !== startToken) return;
+
       markBackendOk();
       appendSample(sample);
     },
     (status: EEGConnectionStatus) => {
       if (token !== startToken) return;
+
       if (status === 'connected') {
         markBackendOk();
         publish(undefined, { status: 'connected', error: null });
       } else if (status === 'reconnecting') {
-        publish(undefined, { status: 'reconnecting', error: 'EEG websocket reconnecting' });
+        publish(undefined, {
+          status: 'reconnecting',
+          error: 'EEG websocket reconnecting'
+        });
       } else if (status === 'disconnected') {
         publish(undefined, { status: 'disconnected' });
       } else if (status === 'error') {
-        publish(undefined, { status: 'error', error: 'EEG websocket error' });
+        publish(undefined, {
+          status: 'error',
+          error: 'EEG websocket error'
+        });
       } else {
         publish(undefined, { status });
       }
     },
     (text) => {
       if (token !== startToken) return;
+
       addLog('ERROR', 'EEG', text);
       publish(undefined, { error: text });
     }
@@ -181,14 +255,28 @@ export function stopEEGMonitoring(logStop = true) {
   buffer = [];
   lastLiveSampleAt = 0;
   eegState.set(initialState);
-  museBackendConnected.set(false);
+
+  /**
+   * Do not set museBackendConnected to false here.
+   *
+   * Stopping EEG monitoring only stops the stream/reader.
+   * The backend may still be online and should still show Online
+   * in the header if GET /api/health succeeds.
+   */
   museError.set(null);
 
   if (logStop) {
     addLog('INFO', 'EEG', 'EEG monitoring stopped');
-    void stopMuseReader().catch((error) => {
-      addLog('WARN', 'EEG', 'Could not stop Muse reader', { message: message(error) });
-    });
+
+    void stopMuseReader()
+      .catch((error) => {
+        addLog('WARN', 'EEG', 'Could not stop Muse reader', {
+          message: message(error)
+        });
+      })
+      .finally(() => {
+        void refreshMuseHealth();
+      });
   }
 }
 

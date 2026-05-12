@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import QuoridorBoard from './QuoridorBoard.svelte';
-import { makeGameState } from '$lib/test/factories/game';
+import { makeGameState } from '$lib/../test/factories/game';
 
 describe('QuoridorBoard', () => {
   it('renders an empty state without an active game', () => {

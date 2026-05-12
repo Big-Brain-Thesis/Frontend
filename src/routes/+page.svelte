@@ -42,6 +42,7 @@
     startEEGMonitoring,
     stopEEGMonitoring,
     reconnectEEG,
+    refreshMuseHealth,
     museBackendConnected,
     lastMusePing as lastMusePingMuse,
     museError,
@@ -129,16 +130,18 @@
 
   onMount(() => {
     refreshApiHealth();
+    refreshMuseHealth();
     refreshSavedGames();
 
     const interval = window.setInterval(() => {
       refreshApiHealth();
+      refreshMuseHealth();
     }, 3000);
 
     return () => {
       window.clearInterval(interval);
     };
-  });
+});
 
   $: currentPlayer = $gameState?.players[$gameState.currentPlayer - 1] ?? null;
   $: replayActive = $replayState.active;

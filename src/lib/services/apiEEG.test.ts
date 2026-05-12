@@ -46,6 +46,7 @@ class MockWebSocket {
 
 beforeEach(() => {
   MockWebSocket.instances = [];
+  vi.unstubAllEnvs();
 });
 
 describe('apiEEG service', () => {
@@ -123,6 +124,55 @@ describe('apiEEG service', () => {
 
     expect(sample.source).toBe('band_powers.beta');
     expect(sample.channels).toEqual({ TP9: 0.1, AF7: 0.2, AF8: 0.3, TP10: 0.4 });
+  });
+
+  it('accepts exact Muse API health response shape', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          ok: true,
+          frames: 4,
+          clients: 1,
+          time: 1710000000,
+          process: { running: false, pid: null, returncode: null, last_log: null },
+          eeg: {
+            frames: 4,
+            clients: 1,
+            last_frame_at: 1710000000,
+            last_nonzero_frame_at: 1710000000,
+            seconds_since_last_frame: 0.25,
+            last_abs_max: 3.75
+          }
+        })
+      )
+    );
+
+    const health = await getMuseHealth();
+
+    expect(health.ok).toBe(true);
+    expect(health.process?.running).toBe(false);
+    expect(health.eeg?.last_nonzero_frame_at).toBe(1710000000);
+    expect(health.eeg?.last_abs_max).toBe(3.75);
+  });
+
+  it('rejects malformed EEG history frames instead of silently accepting schema drift', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ frames: [{ timestamp: 1000, channels: { bad: 1 } }] }))
+    );
+
+    await expect(fetchEEGHistory()).rejects.toThrow('EEG frame has no usable channel values');
+  });
+
+  it('uses a trimmed explicit EEG API base URL', async () => {
+    vi.stubEnv('PUBLIC_EEG_API_BASE', 'http://muse.local:8000///');
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ frames: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchEEGHistory(1);
+
+    expect(String(fetchMock.mock.calls[0][0])).toBe('http://muse.local:8000/api/eeg/history?limit=1&n=1');
   });
 
   it('sends Muse process controls to the EEG API', async () => {

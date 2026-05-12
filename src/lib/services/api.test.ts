@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { makeGameState, makeLoadedGameResponse, makeSavedGameSummary } from '$lib/test/factories/game';
+import { makeGameState, makeLoadedGameResponse, makeSavedGameSummary } from '$lib/../test/factories/game';
 
 vi.mock('$lib/stores/logger', () => ({
   addLog: vi.fn()
@@ -14,6 +14,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 describe('apiService', () => {
   beforeEach(() => {
+    vi.unstubAllEnvs();
     vi.stubGlobal('fetch', vi.fn());
   });
 
@@ -92,7 +93,9 @@ describe('apiService', () => {
     await expect(apiService.submitMove('session-test', 'z9')).rejects.toThrow('Illegal pawn move');
   });
 
-  it('throws network failures as Error objects', async () => {
+  it('throws network failures as Error objects after retries are exhausted', async () => {
+    vi.stubEnv('PUBLIC_API_RETRIES', '0');
+
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockRejectedValueOnce(new TypeError('backend unreachable'));
 

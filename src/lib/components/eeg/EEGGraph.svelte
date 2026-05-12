@@ -26,11 +26,20 @@
     max: number;
     span: number;
     zeroY: number;
+    ticks: number[];
+  };
+
+  type Point = {
+    x: number;
+    y: number;
+    value: number;
+    index: number;
   };
 
   type GraphLine = Series & {
     d: string;
     latest: number;
+    points: Point[];
   };
 
   type GraphView = GraphConfig & {
@@ -38,12 +47,23 @@
     paths: GraphLine[];
   };
 
-  const width = 760;
-  const height = 180;
-  const padX = 18;
-  const padTop = 18;
-  const padBottom = 24;
+  const width = 920;
+  const height = 240;
+  const padLeft = 68;
+  const padRight = 24;
+  const padTop = 16;
+  const padBottom = 32;
   const maxVisibleSamples = 240;
+  const yTickCount = 5;
+  const xTickCount = 5;
+
+  const graphWidth = width - padLeft - padRight;
+  const graphHeight = height - padTop - padBottom;
+
+  const yLimitGrowthPadding = 1.08;
+  const minYLimit = 1e-9;
+
+  let graphYLimits: Record<string, number> = {};
 
   const allChannels: EEGChannel[] = ["TP9", "AF7", "AF8", "TP10"];
 
@@ -74,6 +94,7 @@
   $: frameLabel =
     visibleSamples.length === 1 ? "1 frame" : `${visibleSamples.length} frames`;
   $: sourceLabel = latestSample?.source ?? "channels";
+  $: xTicks = getXTicks(visibleSamples.length);
 
   function sampleValue(sample: EEGSample, channel: EEGChannel): number {
     const n = Number(sample.channels[channel]);
@@ -92,73 +113,106 @@
     return max;
   }
 
-  function valuesFor(
-    channel: EEGChannel,
-    displaySamples: EEGSample[],
-  ): number[] {
+  function valuesFor(channel: EEGChannel, displaySamples: EEGSample[]): number[] {
     return displaySamples.map((sample) => sampleValue(sample, channel));
   }
 
-  function combinedValues(
-    displaySamples: EEGSample[],
-    series: Series[],
-  ): number[] {
+  function combinedValues(displaySamples: EEGSample[], series: Series[]): number[] {
     return series.flatMap((item) => valuesFor(item.key, displaySamples));
   }
 
-  function getRange(values: number[]): Range {
+  function graphKey(graph: GraphConfig): string {
+    return graph.series.map((line) => line.key).join("+");
+  }
+
+  function getStoredYLimit(key: string, values: number[]): number {
     const finite = values.filter(Number.isFinite);
 
-    if (finite.length === 0) {
-      return {
-        min: -1,
-        max: 1,
-        span: 2,
-        zeroY: 0.5,
+    const currentAbsMax = finite.reduce(
+      (max, value) => Math.max(max, Math.abs(value)),
+      0,
+    );
+
+    const nextLimit = Math.max(currentAbsMax * yLimitGrowthPadding, minYLimit);
+    const storedLimit = graphYLimits[key];
+
+    if (!storedLimit || nextLimit > storedLimit) {
+      graphYLimits = {
+        ...graphYLimits,
+        [key]: nextLimit,
       };
+
+      return nextLimit;
     }
 
-    let min = Math.min(...finite);
-    let max = Math.max(...finite);
+    return storedLimit;
+  }
 
-    if (min === max) {
-      const base = Math.max(Math.abs(min), 1e-9);
-      min -= base;
-      max += base;
-    }
+  function getRange(storedLimit: number): Range {
+    const limit = Math.max(storedLimit, minYLimit);
 
+    const min = -limit;
+    const max = limit;
     const span = max - min;
-    const largest = Math.max(Math.abs(max), Math.abs(min), 1e-9);
-    const padding = Math.max(span * 0.18, largest * 0.08, 1e-9);
-
-    min -= padding;
-    max += padding;
-
-    const finalSpan = max - min || 1;
-    const zeroY = 1 - (0 - min) / finalSpan;
+    const zeroY = 0.5;
 
     return {
       min,
       max,
-      span: finalSpan,
-      zeroY: Math.max(0, Math.min(1, zeroY)),
+      span,
+      zeroY,
+      ticks: getYTicks(min, max, yTickCount),
     };
   }
 
-  function buildPath(values: number[], range: Range): string {
-    if (values.length === 0) return "";
+  function getYTicks(min: number, max: number, count: number): number[] {
+    if (count <= 1) return [min];
 
-    const graphWidth = width - padX * 2;
-    const graphHeight = height - padTop - padBottom;
+    const ticks: number[] = [];
+    const step = (max - min) / (count - 1);
 
-    return values
-      .map((value, index) => {
-        const x = padX + (index / Math.max(values.length - 1, 1)) * graphWidth;
-        const normalized = (value - range.min) / range.span;
-        const y = padTop + (1 - normalized) * graphHeight;
+    for (let index = 0; index < count; index += 1) {
+      ticks.push(max - step * index);
+    }
 
-        return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
-      })
+    return ticks;
+  }
+
+  function getXTicks(sampleCount: number): number[] {
+    if (sampleCount <= 1) return [0];
+
+    const lastIndex = sampleCount - 1;
+    const ticks: number[] = [];
+
+    for (let index = 0; index < xTickCount; index += 1) {
+      ticks.push(Math.round((index / (xTickCount - 1)) * lastIndex));
+    }
+
+    return [...new Set(ticks)];
+  }
+
+  function pointFor(value: number, index: number, count: number, range: Range): Point {
+    const x = padLeft + (index / Math.max(count - 1, 1)) * graphWidth;
+    const normalized = (value - range.min) / range.span;
+    const y = padTop + (1 - normalized) * graphHeight;
+
+    return { x, y, value, index };
+  }
+
+  function buildPoints(values: number[], range: Range): Point[] {
+    return values.map((value, index) =>
+      pointFor(value, index, values.length, range),
+    );
+  }
+
+  function buildPath(points: Point[]): string {
+    if (points.length === 0) return "";
+
+    return points
+      .map(
+        (point, index) =>
+          `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`,
+      )
       .join(" ");
   }
 
@@ -168,22 +222,36 @@
     latest: EEGSample | undefined,
   ): GraphView[] {
     return configs.map((graph) => {
-      const range = getRange(combinedValues(displaySamples, graph.series));
+      const values = combinedValues(displaySamples, graph.series);
+      const key = graphKey(graph);
+      const storedLimit = getStoredYLimit(key, values);
+      const range = getRange(storedLimit);
 
       return {
         ...graph,
         range,
         paths: graph.series.map((line) => {
-          const values = valuesFor(line.key, displaySamples);
+          const lineValues = valuesFor(line.key, displaySamples);
+          const points = buildPoints(lineValues, range);
 
           return {
             ...line,
             latest: latest ? sampleValue(latest, line.key) : 0,
-            d: buildPath(values, range),
+            points,
+            d: buildPath(points),
           };
         }),
       };
     });
+  }
+
+  function xForTick(sampleIndex: number, sampleCount: number): number {
+    return padLeft + (sampleIndex / Math.max(sampleCount - 1, 1)) * graphWidth;
+  }
+
+  function yForTick(value: number, range: Range): number {
+    const normalized = (value - range.min) / range.span;
+    return padTop + (1 - normalized) * graphHeight;
   }
 
   function formatNumber(n: number | undefined): string {
@@ -198,9 +266,17 @@
 
     return n.toFixed(1);
   }
+
+  function formatXTick(sampleIndex: number, sampleCount: number): string {
+    if (sampleCount <= 1) return "0";
+
+    return sampleIndex === sampleCount - 1
+      ? "latest"
+      : `-${sampleCount - 1 - sampleIndex}`;
+  }
 </script>
 
-<div class="space-y-3">
+<div class="space-y-4">
   <div
     class="mono flex items-center justify-between text-[11px] uppercase tracking-wider text-zinc-500"
   >
@@ -209,20 +285,18 @@
   </div>
 
   {#if visibleSamples.length === 0}
-    <div class="rounded border border-dashed border-zinc-800 bg-zinc-950 p-5">
-      <div
-        class="flex min-h-32 flex-col items-center justify-center gap-3 text-center"
-      >
-        <div class="flex h-11 items-end gap-1.5">
-          <span class="h-4 w-2 animate-pulse rounded bg-blue-400/50"></span>
+    <div class="rounded border border-dashed border-zinc-800 bg-zinc-950 p-6">
+      <div class="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
+        <div class="flex h-14 items-end gap-1.5">
+          <span class="h-5 w-2 animate-pulse rounded bg-blue-400/50"></span>
           <span
-            class="h-8 w-2 animate-pulse rounded bg-violet-400/60 [animation-delay:120ms]"
+            class="h-10 w-2 animate-pulse rounded bg-violet-400/60 [animation-delay:120ms]"
           ></span>
           <span
-            class="h-6 w-2 animate-pulse rounded bg-emerald-400/50 [animation-delay:240ms]"
+            class="h-7 w-2 animate-pulse rounded bg-emerald-400/50 [animation-delay:240ms]"
           ></span>
           <span
-            class="h-10 w-2 animate-pulse rounded bg-amber-400/60 [animation-delay:360ms]"
+            class="h-12 w-2 animate-pulse rounded bg-amber-400/60 [animation-delay:360ms]"
           ></span>
         </div>
 
@@ -242,120 +316,193 @@
   {/if}
 
   {#if visibleSamples.length > 0 && loading}
-      <div class="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2">
-        <div class="mono flex items-center gap-2 text-[11px] text-blue-300">
-          <span class="h-2 w-2 animate-pulse rounded-full bg-blue-300"></span>
-          Reconnecting. Existing graph data is kept visible.
-        </div>
+    <div class="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2">
+      <div class="mono flex items-center gap-2 text-[11px] text-blue-300">
+        <span class="h-2 w-2 animate-pulse rounded-full bg-blue-300"></span>
+        Reconnecting. Existing graph data is kept visible.
       </div>
+    </div>
   {/if}
 
   {#if flatZero}
-      <div
-        class="rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2"
-      >
-        <p class="mono text-[11px] text-yellow-300">
-          Frames are arriving, but all channel values are exactly zero. The
-          graph is live; the reader is sending flat data.
-        </p>
-      </div>
+    <div class="rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
+      <p class="mono text-[11px] text-yellow-300">
+        Frames are arriving, but all channel values are exactly zero. The graph
+        is live; the reader is sending flat data.
+      </p>
+    </div>
   {/if}
 
-  <div class="space-y-3">
-      {#each graphViews as graph}
-        <section class="rounded border border-zinc-800 bg-zinc-950 p-3">
-          <div class="mb-2 flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div
-                class="mono text-[11px] uppercase tracking-wider text-zinc-300"
-              >
-                {graph.title}
-              </div>
-              <div class="mt-0.5 text-[11px] text-zinc-500">
-                {graph.subtitle}
-              </div>
-              <div class="mono mt-1 text-[10px] text-zinc-600">
-                y-axis: adaptive raw · {formatNumber(graph.range.min)} → {formatNumber(
-                  graph.range.max,
-                )}
-              </div>
+  <div class="space-y-4">
+    {#each graphViews as graph}
+      <section class="rounded border border-zinc-800 bg-zinc-950 p-4">
+        <div class="mb-3 flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="mono text-[11px] uppercase tracking-wider text-zinc-300">
+              {graph.title}
             </div>
-
-            <div class="flex shrink-0 flex-col gap-1">
-              {#each graph.paths as line}
-                <div
-                  class="mono rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[10px]"
-                >
-                  <span class={line.textClass}>{line.key}</span>
-                  <span class="ml-1 text-zinc-300"
-                    >{formatNumber(line.latest)}</span
-                  >
-                </div>
-              {/each}
+            <div class="mt-0.5 text-[11px] text-zinc-500">
+              {graph.subtitle}
+            </div>
+            <div class="mono mt-1 text-[10px] text-zinc-600">
+              y-axis stored adaptive · x-axis samples from oldest to latest
             </div>
           </div>
 
-          <svg
-            viewBox={`0 0 ${width} ${height}`}
-            class="h-44 w-full rounded bg-zinc-900/80"
-          >
-            <rect x="0" y="0" {width} {height} fill="#09090b" rx="8" />
-
-            {#each [0, 1, 2, 3] as index}
-              <line
-                x1={padX}
-                y1={padTop + (index / 3) * (height - padTop - padBottom)}
-                x2={width - padX}
-                y2={padTop + (index / 3) * (height - padTop - padBottom)}
-                stroke="#27272a"
-                stroke-dasharray="3 5"
-                stroke-width="1"
-              />
-            {/each}
-
-            {#if graph.range.min < 0 && graph.range.max > 0}
-              <line
-                x1={padX}
-                y1={padTop + graph.range.zeroY * (height - padTop - padBottom)}
-                x2={width - padX}
-                y2={padTop + graph.range.zeroY * (height - padTop - padBottom)}
-                stroke="#3f3f46"
-                stroke-width="1"
-              />
-            {/if}
-
-            <text
-              x={padX}
-              y="12"
-              fill="#71717a"
-              font-size="10"
-              font-family="monospace"
-            >
-              {formatNumber(graph.range.max)}
-            </text>
-
-            <text
-              x={padX}
-              y={height - 6}
-              fill="#71717a"
-              font-size="10"
-              font-family="monospace"
-            >
-              {formatNumber(graph.range.min)}
-            </text>
-
+          <div class="flex shrink-0 flex-col gap-1">
             {#each graph.paths as line}
-              <path
-                d={line.d}
-                fill="none"
-                stroke={line.color}
-                stroke-width="2.1"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
+              <div class="mono rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[10px]">
+                <span class={line.textClass}>{line.key}</span>
+                <span class="ml-1 text-zinc-300">{formatNumber(line.latest)}</span>
+              </div>
             {/each}
-          </svg>
-        </section>
-      {/each}
+          </div>
+        </div>
+
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+          class="h-40 w-full rounded bg-zinc-900/80"
+          role="img"
+          aria-label={`${graph.title} EEG graph`}
+        >
+          <rect x="0" y="0" {width} {height} fill="#09090b" rx="0" />
+
+          <line
+            x1={padLeft}
+            y1={padTop}
+            x2={padLeft}
+            y2={height - padBottom}
+            stroke="#52525b"
+            stroke-width="1.2"
+          />
+          <line
+            x1={padLeft}
+            y1={height - padBottom}
+            x2={width - padRight}
+            y2={height - padBottom}
+            stroke="#52525b"
+            stroke-width="1.2"
+          />
+
+          {#each graph.range.ticks as tick}
+            <line
+              x1={padLeft}
+              y1={yForTick(tick, graph.range)}
+              x2={width - padRight}
+              y2={yForTick(tick, graph.range)}
+              stroke="#27272a"
+              stroke-dasharray="3 5"
+              stroke-width="1"
+            />
+            <text
+              x={padLeft - 10}
+              y={yForTick(tick, graph.range) + 3}
+              text-anchor="end"
+              fill="#a1a1aa"
+              font-size="10"
+              font-family="monospace"
+            >
+              {formatNumber(tick)}
+            </text>
+          {/each}
+
+          {#each xTicks as tick}
+            <line
+              x1={xForTick(tick, visibleSamples.length)}
+              y1={padTop}
+              x2={xForTick(tick, visibleSamples.length)}
+              y2={height - padBottom}
+              stroke="#1f1f23"
+              stroke-dasharray="2 8"
+              stroke-width="1"
+            />
+            <text
+              x={xForTick(tick, visibleSamples.length)}
+              y={height - 18}
+              text-anchor="middle"
+              fill="#a1a1aa"
+              font-size="10"
+              font-family="monospace"
+            >
+              {formatXTick(tick, visibleSamples.length)}
+            </text>
+          {/each}
+
+          {#if graph.range.min < 0 && graph.range.max > 0}
+            <line
+              x1={padLeft}
+              y1={padTop + graph.range.zeroY * graphHeight}
+              x2={width - padRight}
+              y2={padTop + graph.range.zeroY * graphHeight}
+              stroke="#71717a"
+              stroke-width="1.3"
+            />
+            <text
+              x={width - padRight - 4}
+              y={padTop + graph.range.zeroY * graphHeight - 5}
+              text-anchor="end"
+              fill="#71717a"
+              font-size="10"
+              font-family="monospace"
+            >
+              zero
+            </text>
+          {/if}
+
+          <text
+            x={padLeft}
+            y="14"
+            fill="#71717a"
+            font-size="10"
+            font-family="monospace"
+          >
+            y: raw channel value
+          </text>
+          <text
+            x={width - padRight}
+            y={height - 6}
+            text-anchor="end"
+            fill="#71717a"
+            font-size="10"
+            font-family="monospace"
+          >
+            x: sample index
+          </text>
+
+          {#each graph.paths as line}
+            <path
+              d={line.d}
+              fill="none"
+              stroke={line.color}
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+
+            {#if line.points.length > 0}
+              <circle
+                cx={line.points[line.points.length - 1].x}
+                cy={line.points[line.points.length - 1].y}
+                r="3.5"
+                fill={line.color}
+              />
+              <text
+                x={Math.min(
+                  line.points[line.points.length - 1].x + 8,
+                  width - padRight - 64,
+                )}
+                y={line.points[line.points.length - 1].y - 6}
+                fill={line.color}
+                font-size="10"
+                font-family="monospace"
+              >
+                {line.key}: {formatNumber(line.latest)}
+              </text>
+            {/if}
+          {/each}
+        </svg>
+      </section>
+    {/each}
   </div>
 </div>

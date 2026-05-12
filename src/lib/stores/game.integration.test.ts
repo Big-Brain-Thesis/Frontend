@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { makeAfterMoveState, makeGameState, makeLoadedGameResponse, makeSavedGameSummary } from '$lib/test/factories/game';
+import { makeAfterMoveState, makeGameState, makeLoadedGameResponse, makeSavedGameSummary } from '$lib/../test/factories/game';
 
 vi.mock('$lib/stores/logger', () => ({
   addLog: vi.fn()

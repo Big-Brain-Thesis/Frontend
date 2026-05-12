@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import EEGGraph from '$lib/components/eeg/EEGGraph.svelte';
-import { eegSample } from '$test/factories/eeg';
+import { eegSample } from '$lib/../test/factories/eeg';
 
 describe('EEGGraph', () => {
   it('shows the waiting state before samples arrive', () => {
