@@ -236,7 +236,7 @@
       <div
         class="mono rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-400"
       >
-        PLayer {gameState.currentPlayer}'s has {activePlayer?.wallsRemaining ?? 0} walls remaining: 
+        PLayer {gameState.currentPlayer} has {activePlayer?.wallsRemaining ?? 0} walls remaining: 
       </div>
 
       <div
