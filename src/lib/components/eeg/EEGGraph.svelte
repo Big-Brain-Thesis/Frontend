@@ -72,16 +72,16 @@
       title: "Focus channels",
       subtitle: "AF7 + AF8 frontal signal",
       series: [
-        { key: "AF7", color: "#60a5fa", textClass: "text-blue-300" },
-        { key: "AF8", color: "#a78bfa", textClass: "text-violet-300" },
+        { key: "AF7", color: "var(--eeg-channel-af7)", textClass: "text-blue-300" },
+        { key: "AF8", color: "var(--eeg-channel-af8)", textClass: "text-violet-300" },
       ],
     },
     {
       title: "Movement channels",
       subtitle: "TP9 + TP10 temporal signal",
       series: [
-        { key: "TP9", color: "#34d399", textClass: "text-emerald-300" },
-        { key: "TP10", color: "#fbbf24", textClass: "text-amber-300" },
+        { key: "TP9", color: "var(--eeg-channel-tp9)", textClass: "text-emerald-300" },
+        { key: "TP10", color: "var(--eeg-channel-tp10)", textClass: "text-amber-300" },
       ],
     },
   ];
@@ -315,27 +315,28 @@
     </div>
   {/if}
 
-  {#if visibleSamples.length > 0 && loading}
-    <div class="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2">
-      <div class="mono flex items-center gap-2 text-[11px] text-blue-300">
-        <span class="h-2 w-2 animate-pulse rounded-full bg-blue-300"></span>
-        Reconnecting. Existing graph data is kept visible.
+  {#if visibleSamples.length > 0}
+    {#if loading}
+      <div class="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2">
+        <div class="mono flex items-center gap-2 text-[11px] text-blue-300">
+          <span class="h-2 w-2 animate-pulse rounded-full bg-blue-300"></span>
+          Reconnecting. Existing graph data is kept visible.
+        </div>
       </div>
-    </div>
-  {/if}
+    {/if}
 
-  {#if flatZero}
-    <div class="rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
-      <p class="mono text-[11px] text-yellow-300">
-        Frames are arriving, but all channel values are exactly zero. The graph
-        is live; the reader is sending flat data.
-      </p>
-    </div>
-  {/if}
+    {#if flatZero}
+      <div class="rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
+        <p class="mono text-[11px] text-yellow-300">
+          Frames are arriving, but all channel values are exactly zero. The graph
+          is live; the reader is sending flat data.
+        </p>
+      </div>
+    {/if}
 
-  <div class="space-y-4">
-    {#each graphViews as graph}
-      <section class="rounded border border-zinc-800 bg-zinc-950 p-4">
+    <div class="space-y-4">
+      {#each graphViews as graph}
+        <section class="rounded border border-zinc-800 bg-zinc-950 p-4">
         <div class="mb-3 flex items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="mono text-[11px] uppercase tracking-wider text-zinc-300">
@@ -366,14 +367,14 @@
           role="img"
           aria-label={`${graph.title} EEG graph`}
         >
-          <rect x="0" y="0" {width} {height} fill="#09090b" rx="0" />
+          <rect x="0" y="0" {width} {height} fill="var(--chart-canvas)" rx="0" />
 
           <line
             x1={padLeft}
             y1={padTop}
             x2={padLeft}
             y2={height - padBottom}
-            stroke="#52525b"
+            stroke="var(--chart-axis)"
             stroke-width="1.2"
           />
           <line
@@ -381,7 +382,7 @@
             y1={height - padBottom}
             x2={width - padRight}
             y2={height - padBottom}
-            stroke="#52525b"
+            stroke="var(--chart-axis)"
             stroke-width="1.2"
           />
 
@@ -391,7 +392,7 @@
               y1={yForTick(tick, graph.range)}
               x2={width - padRight}
               y2={yForTick(tick, graph.range)}
-              stroke="#27272a"
+              stroke="var(--chart-grid)"
               stroke-dasharray="3 5"
               stroke-width="1"
             />
@@ -399,7 +400,7 @@
               x={padLeft - 10}
               y={yForTick(tick, graph.range) + 3}
               text-anchor="end"
-              fill="#a1a1aa"
+              fill="var(--chart-label)"
               font-size="10"
               font-family="monospace"
             >
@@ -413,7 +414,7 @@
               y1={padTop}
               x2={xForTick(tick, visibleSamples.length)}
               y2={height - padBottom}
-              stroke="#1f1f23"
+              stroke="var(--chart-subgrid)"
               stroke-dasharray="2 8"
               stroke-width="1"
             />
@@ -421,7 +422,7 @@
               x={xForTick(tick, visibleSamples.length)}
               y={height - 18}
               text-anchor="middle"
-              fill="#a1a1aa"
+              fill="var(--chart-label)"
               font-size="10"
               font-family="monospace"
             >
@@ -435,14 +436,14 @@
               y1={padTop + graph.range.zeroY * graphHeight}
               x2={width - padRight}
               y2={padTop + graph.range.zeroY * graphHeight}
-              stroke="#71717a"
+              stroke="var(--chart-muted)"
               stroke-width="1.3"
             />
             <text
               x={width - padRight - 4}
               y={padTop + graph.range.zeroY * graphHeight - 5}
               text-anchor="end"
-              fill="#71717a"
+              fill="var(--chart-muted)"
               font-size="10"
               font-family="monospace"
             >
@@ -453,7 +454,7 @@
           <text
             x={padLeft}
             y="14"
-            fill="#71717a"
+            fill="var(--chart-muted)"
             font-size="10"
             font-family="monospace"
           >
@@ -463,7 +464,7 @@
             x={width - padRight}
             y={height - 6}
             text-anchor="end"
-            fill="#71717a"
+            fill="var(--chart-muted)"
             font-size="10"
             font-family="monospace"
           >
@@ -502,7 +503,8 @@
             {/if}
           {/each}
         </svg>
-      </section>
-    {/each}
-  </div>
+        </section>
+      {/each}
+    </div>
+  {/if}
 </div>

@@ -1,7 +1,7 @@
 <script lang="ts">
+  import GameResultPopout from "$lib/components/board/GameResultPopout.svelte";
   import type { GameState, Player, WallOrientation } from "$lib/types/game";
   import { formatSquare } from "$lib/utils/notation";
-  import { fade } from "svelte/transition";
 
   export let gameState: GameState | null = null;
   export let disabled = false;
@@ -52,6 +52,10 @@
     gameState?.players.find(
       (player) => player.id === gameState.currentPlayer,
     ) ?? null;
+
+  $: winnerPlayer = gameState?.winner
+    ? gameState.players.find((player) => player.id === gameState.winner) ?? null
+    : null;
 
   $: canPlaceWalls = !disabled && (activePlayer?.wallsRemaining ?? 0) > 0;
 
@@ -285,7 +289,7 @@
         </div>
 
         <div
-          class="absolute left-6.5 top-6.5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 shadow-2xl shadow-black/30"
+          class="app-elevated-shadow absolute left-6.5 top-6.5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3"
         >
           <div
             class="relative rounded-xl border border-zinc-800 bg-zinc-900"
@@ -399,18 +403,12 @@
           </div>
         </div>
 
-        {#if gameState.winner}
-          <div
-            class="absolute inset-0 z-50 flex items-center justify-center bg-black/70"
-            transition:fade={{ duration: 1000 }}
-          >
-            <div class="animate-bounce text-center">
-              <h2 class="mb-4 text-4xl font-bold text-white">Game ended!</h2>
-              <p class="text-4xl font-bold text-white">
-                Player {gameState.winner} is the winner!
-              </p>
-            </div>
-          </div>
+        {#if winnerPlayer}
+          <GameResultPopout
+            winner={winnerPlayer}
+            moveCount={gameState.moveHistory.length}
+            wallCount={gameState.walls.length}
+          />
         {/if}
       </div>
     {/key}

@@ -2,13 +2,11 @@
   import type { EEGState } from "$lib/types/eeg";
   import EEGGraph from "$lib/components/eeg/EEGGraph.svelte";
   import {
-    reconnectEEG,
     startEEGMonitoring,
     stopEEGMonitoring,
   } from "$lib/stores/eeg";
 
   export let eegState: EEGState;
-  export let onReconnect: () => void | Promise<void> = () => reconnectEEG();
 
   let busy = false;
 
@@ -16,11 +14,15 @@
   $: sampleCount = eegState.samples.length;
   $: hasSamples = sampleCount > 0;
   $: isConnected = eegState.status === "connected";
+  $: isError = eegState.status === "error";
   $: isWorking =
     eegState.status === "connecting" || eegState.status === "reconnecting";
-  $: isActive = eegState.enabled && eegState.status !== "disconnected";
+  $: isStreamActive = eegState.enabled && (isWorking || isConnected);
   $: isWaiting = eegState.enabled && !hasSamples && (isWorking || isConnected);
   $: isStreaming = isConnected && hasSamples;
+  $: canStartSource = !busy && (!isStreamActive || isError);
+  $: canStop = !busy && eegState.enabled && eegState.status !== "disconnected";
+  $: startMuseLabel = isError ? "Retry Muse" : "Connect Muse";
   $: rateLabel = eegState.sampleRate ? `${eegState.sampleRate} Hz` : "— Hz";
   $: lastFrameAge = latestSample
     ? Math.max(0, Date.now() - latestSample.timestamp)
@@ -72,10 +74,6 @@
     return run(() => startEEGMonitoring({ simulate: true }));
   }
 
-  function reconnect() {
-    return run(onReconnect);
-  }
-
   function disconnect() {
     return run(() => stopEEGMonitoring(true));
   }
@@ -98,7 +96,7 @@
     </span>
   </div>
 
-  {#if isWaiting}
+  {#if isWaiting || isWorking}
     <div class="mb-3 rounded border border-blue-500/20 bg-blue-500/10 p-3">
       <div class="flex min-w-0 items-center gap-3">
         <div class="relative h-7 w-7 shrink-0">
@@ -110,11 +108,10 @@
 
         <div class="min-w-0 overflow-hidden">
           <div class="mono truncate text-[11px] uppercase tracking-wider text-blue-300">
-            Waiting for live frames
+            Waiting for Muse data
           </div>
           <div class="mt-1 text-[11px] leading-4 text-zinc-400">
-            Backend connected. Graphs appear when TP9 / AF7 / AF8 / TP10
-            samples arrive.
+            Graphs appear when TP9 / AF7 / AF8 / TP10 samples arrive.
           </div>
         </div>
       </div>
@@ -129,50 +126,37 @@
     </div>
   {/if}
 
-    <div
-    class="mb-3 grid min-w-0 grid-cols-4 gap-1 overflow-hidden rounded border border-zinc-800 bg-zinc-950 p-1"
+  <div
+    class="mb-3 grid min-w-0 grid-cols-3 gap-1 overflow-hidden rounded border border-zinc-800 bg-zinc-950 p-1"
   >
     <button
       type="button"
-      class="mono block h-9 min-w-0 max-w-full overflow-hidden rounded border border-blue-500/30 bg-blue-500/10 px-0 text-center text-[6px] leading-none tracking-[-0.08em] text-blue-200 hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-      disabled={busy || isActive}
+      class="mono block h-9 min-w-0 max-w-full overflow-hidden rounded border border-blue-500/30 bg-blue-500/10 px-1 text-center text-[10px] leading-tight text-blue-200 hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+      disabled={!canStartSource}
       on:click={startMuse}
-      title="Start"
+      title={startMuseLabel}
     >
       <span class="block min-w-0 overflow-hidden truncate whitespace-nowrap">
-        Start
+        {startMuseLabel}
       </span>
     </button>
 
     <button
       type="button"
-      class="mono block h-9 min-w-0 max-w-full overflow-hidden rounded border border-purple-500/30 bg-purple-500/10 px-0 text-center text-[6px] leading-none tracking-[-0.08em] text-purple-200 hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-      disabled={busy || isActive}
+      class="mono block h-9 min-w-0 max-w-full overflow-hidden rounded border border-purple-500/30 bg-purple-500/10 px-1 text-center text-[10px] leading-tight text-purple-200 hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+      disabled={!canStartSource}
       on:click={startDemo}
-      title="Demo"
+      title="Demo stream"
     >
       <span class="block min-w-0 overflow-hidden truncate whitespace-nowrap">
-        Demo
+        Demo Stream
       </span>
     </button>
 
     <button
       type="button"
-      class="mono block h-9 min-w-0 max-w-full overflow-hidden rounded border border-zinc-700 bg-zinc-900 px-0 text-center text-[6px] leading-none tracking-[-0.08em] text-zinc-300 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
-      disabled={busy}
-      on:click={reconnect}
-      title="Reconnect"
-      aria-label="Reconnect"
-    >
-      <span class="block min-w-0 overflow-hidden truncate whitespace-nowrap">
-        Reconnect
-      </span>
-    </button>
-
-    <button
-      type="button"
-      class="mono block h-9 min-w-0 max-w-full overflow-hidden rounded border border-red-500/30 bg-red-500/10 px-0 text-center text-[6px] leading-none tracking-[-0.08em] text-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-      disabled={busy || !isActive}
+      class="mono block h-9 min-w-0 max-w-full overflow-hidden rounded border border-red-500/30 bg-red-500/10 px-1 text-center text-[10px] leading-tight text-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+      disabled={!canStop}
       on:click={disconnect}
       title="Stop"
     >
@@ -200,9 +184,11 @@
     </div>
   </div>
 
-  <EEGGraph
-    samples={eegState.samples}
-    loading={isWaiting || isWorking}
-    status={eegState.status}
-  />
+  {#if hasSamples}
+    <EEGGraph
+      samples={eegState.samples}
+      loading={isWaiting || isWorking}
+      status={eegState.status}
+    />
+  {/if}
 </section>

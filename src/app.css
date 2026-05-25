@@ -1,7 +1,158 @@
 @import "tailwindcss";
 
-:root {
+:root,
+:root[data-theme="dark"] {
   color-scheme: dark;
+  --color-zinc-950: #09090b;
+  --color-zinc-900: #18181b;
+  --color-zinc-800: #27272a;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-600: #52525b;
+  --color-zinc-500: #71717a;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-100: #f4f4f5;
+
+  --color-blue-950: #172554;
+  --color-blue-900: #1e3a8a;
+  --color-blue-700: #1d4ed8;
+  --color-blue-600: #2563eb;
+  --color-blue-500: #3b82f6;
+  --color-blue-400: #60a5fa;
+  --color-blue-300: #93c5fd;
+  --color-blue-200: #bfdbfe;
+
+  --color-red-950: #450a0a;
+  --color-red-900: #7f1d1d;
+  --color-red-700: #b91c1c;
+  --color-red-500: #ef4444;
+  --color-red-400: #f87171;
+  --color-red-300: #fca5a5;
+  --color-red-200: #fecaca;
+
+  --color-green-500: #22c55e;
+  --color-green-400: #4ade80;
+  --color-green-300: #86efac;
+
+  --color-emerald-700: #047857;
+  --color-emerald-600: #059669;
+  --color-emerald-500: #10b981;
+  --color-emerald-400: #34d399;
+  --color-emerald-300: #6ee7b7;
+
+  --color-amber-950: #451a03;
+  --color-amber-700: #b45309;
+  --color-amber-500: #f59e0b;
+  --color-amber-400: #fbbf24;
+  --color-amber-300: #fcd34d;
+  --color-amber-200: #fde68a;
+
+  --color-yellow-500: #eab308;
+  --color-yellow-400: #facc15;
+  --color-yellow-300: #fde047;
+
+  --color-purple-500: #a855f7;
+  --color-purple-400: #c084fc;
+  --color-purple-300: #d8b4fe;
+  --color-purple-200: #e9d5ff;
+  --color-violet-400: #a78bfa;
+  --color-violet-300: #c4b5fd;
+  --color-cyan-300: #67e8f9;
+
+  --app-body-bg: var(--color-zinc-950);
+  --app-body-fg: var(--color-zinc-100);
+  --app-focus-ring: #60a5fa;
+  --app-log-bg: #050507;
+  --app-shadow-color: rgb(0 0 0 / 0.3);
+  --app-board-overlay: rgb(0 0 0 / 0.62);
+  --chart-canvas: #09090b;
+  --chart-axis: #52525b;
+  --chart-grid: #27272a;
+  --chart-subgrid: #1f1f23;
+  --chart-label: #a1a1aa;
+  --chart-muted: #71717a;
+  --eeg-channel-af7: #60a5fa;
+  --eeg-channel-af8: #a78bfa;
+  --eeg-channel-tp9: #34d399;
+  --eeg-channel-tp10: #fbbf24;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-zinc-950: #f7f9fc;
+  --color-zinc-900: #ffffff;
+  --color-zinc-800: #dfe6ef;
+  --color-zinc-700: #bac6d5;
+  --color-zinc-600: #758296;
+  --color-zinc-500: #66758a;
+  --color-zinc-400: #59677a;
+  --color-zinc-300: #45566c;
+  --color-zinc-200: #334155;
+  --color-zinc-100: #263346;
+
+  --color-blue-950: #e6eefb;
+  --color-blue-900: #8baee8;
+  --color-blue-700: #3f6fbf;
+  --color-blue-600: #4778cc;
+  --color-blue-500: #5b86d6;
+  --color-blue-400: #3f70c5;
+  --color-blue-300: #315fae;
+  --color-blue-200: #294f91;
+
+  --color-red-950: #fde8e7;
+  --color-red-900: #e29a96;
+  --color-red-700: #bf4a45;
+  --color-red-500: #d45a53;
+  --color-red-400: #b9443e;
+  --color-red-300: #9c3935;
+  --color-red-200: #7d2f2b;
+
+  --color-green-500: #34895e;
+  --color-green-400: #2f7f58;
+  --color-green-300: #276f4c;
+
+  --color-emerald-700: #2e7856;
+  --color-emerald-600: #34895e;
+  --color-emerald-500: #3d9368;
+  --color-emerald-400: #2f7f58;
+  --color-emerald-300: #276f4c;
+
+  --color-amber-950: #fff2d7;
+  --color-amber-700: #b77a2a;
+  --color-amber-500: #c9892f;
+  --color-amber-400: #9f6a1d;
+  --color-amber-300: #865819;
+  --color-amber-200: #714814;
+
+  --color-yellow-500: #b77a17;
+  --color-yellow-400: #956315;
+  --color-yellow-300: #7d5011;
+
+  --color-purple-500: #8b6ac8;
+  --color-purple-400: #7656b5;
+  --color-purple-300: #664aa0;
+  --color-purple-200: #553d88;
+  --color-violet-400: #7656b5;
+  --color-violet-300: #664aa0;
+  --color-cyan-300: #247489;
+
+  --app-body-bg: var(--color-zinc-950);
+  --app-body-fg: var(--color-zinc-100);
+  --app-focus-ring: #4778cc;
+  --app-log-bg: #eef3f8;
+  --app-shadow-color: rgb(38 51 70 / 0.12);
+  --app-board-overlay: rgb(51 65 85 / 0.22);
+  --chart-canvas: #fcfdff;
+  --chart-axis: #96a3b6;
+  --chart-grid: #dfe6ef;
+  --chart-subgrid: #e9eef5;
+  --chart-label: #66758a;
+  --chart-muted: #758296;
+  --eeg-channel-af7: #315fae;
+  --eeg-channel-af8: #7656b5;
+  --eeg-channel-tp9: #2f7f58;
+  --eeg-channel-tp10: #9f6a1d;
 }
 
 html,
@@ -9,11 +160,15 @@ body {
   min-height: 100%;
 }
 
+html {
+  background: var(--app-body-bg);
+}
+
 body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #09090b;
-  color: #f4f4f5;
+  background: var(--app-body-bg);
+  color: var(--app-body-fg);
 }
 
 button,
@@ -22,6 +177,67 @@ select {
   font: inherit;
 }
 
+button,
+input,
+select {
+  color: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--app-focus-ring);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-blue-500) 26%, transparent);
+}
+
 .mono {
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-zinc-700);
+  border-radius: 0.5rem;
+  background: var(--color-zinc-900);
+  color: var(--color-zinc-300);
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--color-blue-400);
+  background: color-mix(in srgb, var(--color-blue-500) 12%, var(--color-zinc-900));
+  color: var(--color-blue-300);
+}
+
+.theme-toggle:active {
+  transform: translateY(1px);
+}
+
+.theme-toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.app-log-viewport {
+  background: var(--app-log-bg);
+}
+
+.app-elevated-shadow {
+  box-shadow: 0 24px 60px var(--app-shadow-color);
+}
+
+.game-result-backdrop {
+  background: var(--app-board-overlay);
 }

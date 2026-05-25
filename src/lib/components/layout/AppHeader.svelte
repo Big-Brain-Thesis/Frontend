@@ -1,5 +1,6 @@
 <script lang="ts">
   import KeyboardHelp from "$lib/components/session/KeyboardHelp.svelte";
+  import ThemeToggle from "$lib/components/layout/ThemeToggle.svelte";
 
   export let sessionId: string | null = null;
   export let apiConnected = false;
@@ -80,6 +81,7 @@
           {museError}
         </div>
       {/if}
+      <ThemeToggle />
       <KeyboardHelp />
     </div>
   </div>

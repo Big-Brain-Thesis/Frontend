@@ -68,4 +68,18 @@ describe('QuoridorBoard', () => {
     expect(screen.getByText(/p1 walls: 10/i)).toBeInTheDocument();
     expect(screen.getByText(/legal moves: d1, e2, f1/i)).toBeInTheDocument();
   });
+
+  it('shows a result popout when the game has a winner', () => {
+    render(QuoridorBoard, {
+      props: {
+        gameState: makeGameState({ status: 'finished', winner: 2 }),
+        disabled: false,
+        soundEnabled: false,
+        onMove: vi.fn()
+      }
+    });
+
+    expect(screen.getByText(/game ended/i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/player 2 wins/i);
+  });
 });

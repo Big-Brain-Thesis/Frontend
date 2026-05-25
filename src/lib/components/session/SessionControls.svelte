@@ -182,7 +182,7 @@
 
   <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
     <button
-      class="mono rounded bg-blue-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+      class={`mono rounded bg-blue-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 ${gameActive ? '' : 'sm:col-span-2 xl:col-span-1 2xl:col-span-2'}`}
       disabled={disabled}
       on:click={onNewGame}
     >

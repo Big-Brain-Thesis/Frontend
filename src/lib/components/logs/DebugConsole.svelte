@@ -293,7 +293,7 @@
 
     <div
       bind:this={viewport}
-      class="overflow-auto bg-black p-3 text-xs"
+      class="app-log-viewport overflow-auto p-3 text-xs"
       style={`height:${maxHeight}`}
     >
       {#if visibleLogs.length === 0}

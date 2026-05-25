@@ -41,7 +41,6 @@
     eegState,
     startEEGMonitoring,
     stopEEGMonitoring,
-    reconnectEEG,
     refreshMuseHealth,
     museBackendConnected,
     lastMusePing as lastMusePingMuse,
@@ -232,7 +231,7 @@
 
       <div class="space-y-4 xl:sticky xl:top-6">
         {#if eegEnabled}
-          <EEGPanel eegState={$eegState} onReconnect={reconnectEEG} />
+          <EEGPanel eegState={$eegState} />
         {/if}
 
         <SessionControls
