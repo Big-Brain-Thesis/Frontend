@@ -114,47 +114,62 @@
   </div>
 
   {#if hasSelectedBot}
-    <div class="space-y-2 rounded border border-zinc-800 bg-zinc-950 p-2.5">
-      <div class="flex items-center justify-between gap-3">
-        <label class="flex items-center gap-2 text-xs text-zinc-300">
-          <input
-            type="checkbox"
-            checked={botAutoplay}
-            disabled={disabled}
-            on:change={(event) => onBotAutoplayChange((event.currentTarget as HTMLInputElement).checked)}
-          />
-          <span class="mono">Autoplay bots</span>
-        </label>
+  <details class="group rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-300">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-2">
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <label class="flex items-center gap-2" on:click|stopPropagation>
+        <input
+          type="checkbox"
+          checked={botAutoplay}
+          disabled={disabled}
+          on:change={(event) => onBotAutoplayChange((event.currentTarget as HTMLInputElement).checked)}
+        />
+        <span class="mono">Autoplay bot moves</span>
+      </label>
+
+      <div class="flex items-center gap-2">
+        <span class="mono text-[11px] text-zinc-500">
+          {(botSpeedMs / 1000).toFixed(1)}s
+        </span>
 
         <button
-          class="mono rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+          class="mono rounded border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={disabled || !canStepBot || botThinking}
-          on:click={onStepBot}
+          on:click|preventDefault={onStepBot}
         >
-          {botThinking ? 'Moving...' : 'Step'}
+          {botThinking ? 'Moving' : 'Step'}
         </button>
-      </div>
 
-      <div class="space-y-1">
-        <div class="mono flex items-center justify-between text-[11px] text-zinc-400">
-          <label for="bot-speed">Bot speed</label>
-          <span>{(botSpeedMs / 1000).toFixed(1)}s</span>
-        </div>
-        <input
-          id="bot-speed"
-          class="w-full"
-          type="range"
-          min="100"
-          max="1000"
-          step="100"
-          value={botSpeedMs}
-          disabled={disabled}
-          on:input={(event) => onBotSpeedChange(Number((event.currentTarget as HTMLInputElement).value))}
-        />
+        <span
+          class="mono text-[11px] text-zinc-500 transition-transform group-open:rotate-180"
+          aria-hidden="true"
+        >
+          ▼
+        </span>
       </div>
+    </summary>
+
+    <div class="mt-2 border-t border-zinc-800 pt-2">
+      <label class="mono mb-1 flex items-center justify-between text-[11px] text-zinc-500" for="bot-speed">
+        <span>Speed</span>
+        <span>{botSpeedMs}ms</span>
+      </label>
+
+      <input
+        id="bot-speed"
+        class="w-full"
+        type="range"
+        min="100"
+        max="1000"
+        step="100"
+        value={botSpeedMs}
+        disabled={disabled}
+        on:input={(event) => onBotSpeedChange(Number((event.currentTarget as HTMLInputElement).value))}
+      />
     </div>
-  {/if}
-
+  </details>
+{/if}
   <label class="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-zinc-300">
     <input
       type="checkbox"

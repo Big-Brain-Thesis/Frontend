@@ -103,12 +103,14 @@ test.beforeEach(async ({ page }) => {
 test('page loads and EEG toggle starts the Muse API connection', async ({ page }) => {
   let museStartRequests = 0;
 
-  await page.route('**/api/process/start', async (route) => {
-    museStartRequests += 1;
-    await route.fulfill({ json: { ok: true, status: 'started', process: { running: true } } });
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().includes('/api/process/start')) {
+      museStartRequests += 1;
+    }
   });
 
   await page.goto('/');
+  await page.waitForResponse((response) => response.url().includes('/api/health') && response.status() === 200);
 
   const eegToggle = page.getByLabel(/monitor eeg/i);
   await expect(eegToggle).toBeVisible();
@@ -123,12 +125,14 @@ test('page loads and EEG toggle starts the Muse API connection', async ({ page }
 test('new game button calls the game backend and leaves the app usable', async ({ page }) => {
   let startGameRequests = 0;
 
-  await page.route('**/api/game/start', async (route) => {
-    startGameRequests += 1;
-    await route.fulfill({ json: gameState });
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().includes('/api/game/start')) {
+      startGameRequests += 1;
+    }
   });
 
   await page.goto('/');
+  await page.waitForResponse((response) => response.url().includes('/api/health') && response.status() === 200);
 
   const newGame = page.getByRole('button', { name: /new game/i });
   await expect(newGame).toBeVisible();

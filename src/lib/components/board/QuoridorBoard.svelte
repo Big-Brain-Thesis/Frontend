@@ -236,7 +236,7 @@
       <div
         class="mono rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-400"
       >
-        PLayer {gameState.currentPlayer} has {activePlayer?.wallsRemaining ?? 0} walls remaining: 
+        <span class={`font-bold ${activePlayer?.color === "blue" ? "text-blue-300" : activePlayer?.color === "red" ? "text-red-300" : ""}`}>Player {gameState.currentPlayer}</span> has <span class={`font-bold ${activePlayer?.color === "blue" ? "text-blue-300" : activePlayer?.color === "red" ? "text-red-300" : ""}`}>{activePlayer?.wallsRemaining ?? 0} walls</span> remaining
       </div>
 
       <div
@@ -417,20 +417,25 @@
 
     <div class="grid w-full max-w-185 gap-2 md:grid-cols-3">
       <div
-        class="mono rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-400"
+        class="mono rounded border border-zinc-800 text-center bg-zinc-950 px-3 py-2 text-sm text-zinc-400"
       >
         Current turn: Player {gameState.currentPlayer}
       </div>
 
       <div
-        class="mono rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-400"
-      >
-        P1 walls: {gameState.players[0]?.wallsRemaining ?? 0} • P2 walls: {gameState
-          .players[1]?.wallsRemaining ?? 0}
-      </div>
+  class="mono rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-center text-xs text-zinc-400"
+>
+  <span class="font-bold text-blue-300">
+    P1 walls: {gameState.players[0]?.wallsRemaining ?? 0}
+  </span>
+  <span> • </span>
+  <span class="font-bold text-red-300">
+    P2 walls: {gameState.players[1]?.wallsRemaining ?? 0}
+  </span>
+</div>
 
       <div
-        class="mono rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm {gameState.winner
+        class="mono rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs {gameState.winner
           ? 'text-green-400'
           : 'text-zinc-400'}"
       >
