@@ -25,6 +25,22 @@ describe('EEGPanel', () => {
     expect(screen.getByText(/focus channels/i)).toBeInTheDocument();
   });
 
+  it('shows waiting state and hides graphs while connecting without samples', () => {
+    render(EEGPanel, {
+      props: {
+        eegState: eegStateFixture({
+          enabled: true,
+          status: 'connecting',
+          samples: []
+        })
+      }
+    });
+
+    expect(screen.getByText(/waiting for muse data/i)).toBeInTheDocument();
+    expect(screen.queryByText(/focus channels/i)).not.toBeInTheDocument();
+    expect(document.querySelectorAll('svg')).toHaveLength(0);
+  });
+
   it('starts real and demo streams when disconnected', async () => {
     render(EEGPanel, {
       props: {
