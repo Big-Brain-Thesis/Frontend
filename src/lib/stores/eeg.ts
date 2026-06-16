@@ -11,6 +11,7 @@ import {
 
 const MAX_SAMPLES = 360;
 const HEALTH_POLL_MS = 4000;
+const DEVICE_FRAME_STALE_MS = 8000;
 
 const initialState: EEGState = {
   enabled: false,
@@ -81,10 +82,43 @@ function publish(sample?: EEGSample, patch: Partial<EEGState> = {}) {
   }));
 }
 
+function hasFreshLiveSample(): boolean {
+  return lastLiveSampleAt > 0 && Date.now() - lastLiveSampleAt <= DEVICE_FRAME_STALE_MS;
+}
+
+function isFreshSample(sample: EEGSample): boolean {
+  return sample.timestamp >= Date.now() - DEVICE_FRAME_STALE_MS;
+}
+
+function hasFreshBackendFrame(health: Awaited<ReturnType<typeof getMuseHealth>>): boolean {
+  const seconds = health.eeg?.seconds_since_last_frame;
+  return typeof seconds === 'number' && seconds * 1000 <= DEVICE_FRAME_STALE_MS;
+}
+
+function keepDeviceStatusFresh(health: Awaited<ReturnType<typeof getMuseHealth>>) {
+  const deviceFresh = hasFreshLiveSample() || hasFreshBackendFrame(health);
+  if (deviceFresh) return;
+
+  eegState.update((state) => {
+    if (!state.enabled || state.status !== 'connected') return state;
+
+    return {
+      ...state,
+      status: 'connecting',
+      error: null
+    };
+  });
+}
+
 function appendSample(sample: EEGSample) {
-  lastLiveSampleAt = Date.now();
+  const fresh = isFreshSample(sample);
+  if (fresh) lastLiveSampleAt = Date.now();
+
   buffer = [...buffer, sample].slice(-MAX_SAMPLES);
-  publish(sample, { status: 'connected', error: null });
+  publish(sample, {
+    status: fresh ? 'connected' : 'connecting',
+    error: null
+  });
 }
 
 /**
@@ -127,6 +161,8 @@ async function pollHealth(token: number) {
     } else {
       markBackendProblem('Muse backend health check returned not ok');
     }
+
+    keepDeviceStatusFresh(health);
 
     const processError = health.process?.error;
     if (processError) museError.set(processError);
@@ -223,7 +259,10 @@ export async function startEEGMonitoring(
 
       if (status === 'connected') {
         markBackendOk();
-        publish(undefined, { status: 'connected', error: null });
+        publish(undefined, {
+          status: hasFreshLiveSample() ? 'connected' : 'connecting',
+          error: null
+        });
       } else if (status === 'reconnecting') {
         publish(undefined, {
           status: 'reconnecting',

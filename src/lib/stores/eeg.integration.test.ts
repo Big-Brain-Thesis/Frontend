@@ -56,10 +56,21 @@ describe('EEG store integration', () => {
 
     const state = get(store.eegState);
     expect(state.enabled).toBe(true);
-    expect(state.status).toBe('connected');
+    expect(state.status).toBe('connecting');
     expect(state.samples).toHaveLength(2);
     expect(state.samples[1].sequence).toBe(2);
     expect(get(store.museBackendConnected)).toBe(true);
+  });
+
+  it('waits for a live EEG frame before marking the device connected', async () => {
+    const store = await loadStore();
+    await store.startEEGMonitoring();
+
+    expect(get(store.eegState).status).toBe('connecting');
+
+    websocketCallbacks.onSample?.(eegSample({ sequence: 1 }));
+
+    expect(get(store.eegState).status).toBe('connected');
   });
 
   it('keeps streaming when history loading fails', async () => {

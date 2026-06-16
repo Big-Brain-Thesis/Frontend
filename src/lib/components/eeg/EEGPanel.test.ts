@@ -36,6 +36,7 @@ describe('EEGPanel', () => {
       }
     });
 
+    expect(screen.getByTitle('Connecting')).toHaveTextContent('Connecting');
     expect(screen.getByText(/waiting for muse data/i)).toBeInTheDocument();
     expect(screen.queryByText(/focus channels/i)).not.toBeInTheDocument();
     expect(document.querySelectorAll('svg')).toHaveLength(0);

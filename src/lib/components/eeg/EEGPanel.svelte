@@ -24,6 +24,7 @@
   $: canStop = !busy && eegState.enabled && eegState.status !== "disconnected";
   $: startMuseLabel = isError ? "Retry Muse" : "Connect Muse";
   $: rateLabel = eegState.sampleRate ? `${eegState.sampleRate} Hz` : "— Hz";
+  $: connectionLabel = statusLabel(eegState.status);
   $: lastFrameAge = latestSample
     ? Math.max(0, Date.now() - latestSample.timestamp)
     : null;
@@ -46,6 +47,21 @@
         return "border-red-500/40 bg-red-500/10 text-red-300";
       default:
         return "border-zinc-700 bg-zinc-950 text-zinc-400";
+    }
+  }
+
+  function statusLabel(status: EEGState["status"]): string {
+    switch (status) {
+      case "connected":
+        return "Connected";
+      case "connecting":
+        return "Connecting";
+      case "reconnecting":
+        return "Reconnecting";
+      case "error":
+        return "Error";
+      default:
+        return "Disconnected";
     }
   }
 
@@ -90,9 +106,9 @@
 
     <span
       class={`mono max-w-[42%] shrink-0 overflow-hidden truncate whitespace-nowrap rounded border px-2 py-1 text-[11px] ${statusClass(eegState.status)}`}
-      title={eegState.status}
+      title={connectionLabel}
     >
-      {eegState.status}
+      {connectionLabel}
     </span>
   </div>
 

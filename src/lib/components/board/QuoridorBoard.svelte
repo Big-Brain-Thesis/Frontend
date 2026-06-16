@@ -2,6 +2,7 @@
   import GameResultPopout from "$lib/components/board/GameResultPopout.svelte";
   import type { GameState, Player, WallOrientation } from "$lib/types/game";
   import { formatSquare } from "$lib/utils/notation";
+  import { gameFocusSummary } from "$lib/stores/focus";
 
   export let gameState: GameState | null = null;
   export let disabled = false;
@@ -408,6 +409,9 @@
             winner={winnerPlayer}
             moveCount={gameState.moveHistory.length}
             wallCount={gameState.walls.length}
+            focus={$gameFocusSummary.sessionId === gameState.sessionId
+              ? $gameFocusSummary
+              : null}
           />
         {/if}
       </div>

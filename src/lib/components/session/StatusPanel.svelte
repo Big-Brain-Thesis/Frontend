@@ -5,6 +5,21 @@
   export let gameState: GameState | null = null;
   export let apiStatus: ApiStatus;
   export let eegState: EEGState;
+
+  function statusLabel(status: EEGState['status']): string {
+    switch (status) {
+      case 'connected':
+        return 'Connected';
+      case 'connecting':
+        return 'Connecting';
+      case 'reconnecting':
+        return 'Reconnecting';
+      case 'error':
+        return 'Error';
+      default:
+        return 'Disconnected';
+    }
+  }
 </script>
 
 <div class="rounded border border-zinc-800 bg-zinc-900 p-4 space-y-3">
@@ -30,7 +45,7 @@
                 : 'text-yellow-400'
           }
         >
-          {eegState.status}
+          {statusLabel(eegState.status)}
         </span>
       </div>
     {/if}

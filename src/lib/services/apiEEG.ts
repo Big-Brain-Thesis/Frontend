@@ -408,6 +408,69 @@ export async function stopMuseReader(): Promise<MuseProcessResponse> {
   return request<MuseProcessResponse>('/api/process/stop', { method: 'POST' });
 }
 
+/**
+ * Focus is measured entirely in the Muse backend (eeg_server/focus_tracker.py).
+ * The frontend only marks the game boundaries and reads back the result.
+ */
+export type CognitiveState =
+  | 'strategic_thinking'
+  | 'focused'
+  | 'stressed'
+  | 'relaxed'
+  | 'unknown';
+
+export const COGNITIVE_STATES: CognitiveState[] = [
+  'strategic_thinking',
+  'focused',
+  'stressed',
+  'relaxed',
+  'unknown'
+];
+
+export type FocusSummary = {
+  focusedPct: number | null;
+  focusedSamples: number;
+  totalSamples: number;
+  /** Per-state frame counts (mirrors the backend's console summary). */
+  byState: Record<CognitiveState, number>;
+};
+
+type FocusSummaryResponse = {
+  ok?: boolean;
+  focused_pct?: number | null;
+  focused_samples?: number;
+  total_samples?: number;
+  by_state?: Partial<Record<CognitiveState, unknown>> | null;
+};
+
+function zeroByState(): Record<CognitiveState, number> {
+  return { strategic_thinking: 0, focused: 0, stressed: 0, relaxed: 0, unknown: 0 };
+}
+
+function normalizeByState(value: FocusSummaryResponse['by_state']): Record<CognitiveState, number> {
+  const out = zeroByState();
+  if (value && typeof value === 'object') {
+    for (const state of COGNITIVE_STATES) out[state] = finiteNumber(value[state]);
+  }
+  return out;
+}
+
+/** Begin a per-game focus session in the backend (resets its counters). */
+export async function startFocusSession(): Promise<void> {
+  await request('/api/eeg/focus/start', { method: 'POST' });
+}
+
+/** Read the focus summary computed by the backend for the current session. */
+export async function fetchFocusSummary(): Promise<FocusSummary> {
+  const response = await request<FocusSummaryResponse>('/api/eeg/focus/summary');
+  return {
+    focusedPct: typeof response.focused_pct === 'number' ? response.focused_pct : null,
+    focusedSamples: finiteNumber(response.focused_samples),
+    totalSamples: finiteNumber(response.total_samples),
+    byState: normalizeByState(response.by_state)
+  };
+}
+
 export function connectEEGWebSocket(
   onSample: (sample: EEGSample) => void,
   onStatusChange?: (status: EEGConnectionStatus) => void,
